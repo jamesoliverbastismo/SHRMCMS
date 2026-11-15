@@ -79,6 +79,11 @@
     font-size: 25px;
 }
 
+.staff-summary-icon .ui-icon {
+    width: 27px;
+    height: 27px;
+}
+
 .staff-summary-card p {
     margin-bottom: 5px;
     color: var(--staff-muted);

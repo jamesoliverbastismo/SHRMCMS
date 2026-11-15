@@ -38,6 +38,11 @@
     font-size: 27px;
 }
 
+.hd-summary-icon .ui-icon {
+    width: 26px;
+    height: 26px;
+}
+
 .hd-summary p {
     margin: 0 0 5px;
     color: #78847a;

@@ -52,6 +52,11 @@
     font-size: 28px;
 }
 
+.sr-summary-icon .ui-icon {
+    width: 26px;
+    height: 26px;
+}
+
 .sr-summary p {
     margin-bottom: 5px;
     color: #718074;

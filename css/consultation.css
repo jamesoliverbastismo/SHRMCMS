@@ -91,6 +91,11 @@
     font-size: 23px;
 }
 
+.stat-icon .ui-icon {
+    width: 22px;
+    height: 22px;
+}
+
 .consultation-stat p {
     margin: 0 0 6px;
     color: #64748b;
@@ -143,6 +148,11 @@
     background: #eff6ff;
     border-radius: 8px;
     font-size: 22px;
+}
+
+.consultation-heading-icon .ui-icon {
+    width: 24px;
+    height: 24px;
 }
 
 .consultation-panel-heading h2 {
@@ -523,6 +533,11 @@
     display: block;
     margin-bottom: 10px;
     font-size: 28px;
+}
+
+.consultation-empty > span .ui-icon {
+    width: 30px;
+    height: 30px;
 }
 
 .consultation-empty strong {

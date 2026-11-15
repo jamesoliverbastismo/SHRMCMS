@@ -39,6 +39,30 @@ img {
     display: block;
 }
 
+.ui-icon {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.admin-sidebar .ui-icon,
+.staff-sidebar .ui-icon {
+    filter: brightness(0) invert(1);
+}
+
+.admin-stat-header .ui-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.admin-action-btn > span .ui-icon {
+    width: 22px;
+    height: 22px;
+}
+
 a {
     text-decoration: none;
 }
@@ -49,23 +73,29 @@ a {
 
 
 .navbar {
-    width: min(1200px, calc(100% - 36px));
+    width: 100%;
+    max-width: none;
     height: 82px;
-    margin: 18px auto 0;
+    margin: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 26px 0 22px;
 
-    /* Updated deep teal header */
-    background: rgba(18, 61, 74, 0.94);
-    border: 1px solid rgba(141, 232, 212, 0.20);
-    border-radius: 18px;
-    box-shadow: 0 18px 34px rgba(10, 48, 57, 0.22);
+    background: linear-gradient(110deg, #0b3546 0%, #155766 58%, #0d3c4d 100%);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
 
     position: relative;
     z-index: 10;
     backdrop-filter: blur(18px);
+}
+
+body:not(.index-page) > .navbar {
+    width: 100%;
+    max-width: none;
+    margin: 0;
 }
 
 .logo-area {
@@ -611,31 +641,6 @@ footer {
     box-shadow: 0 16px 34px rgba(7, 26, 45, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-footer::before,
-footer::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    width: 150px;
-    aspect-ratio: 1;
-    border: 1px solid rgba(44, 106, 204, 0.14);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-footer::before {
-    top: -104px;
-    left: 8%;
-    box-shadow: 0 0 0 18px rgba(255, 255, 255, 0.13), 0 0 0 36px rgba(44, 106, 204, 0.05);
-}
-
-footer::after {
-    right: 8%;
-    bottom: -118px;
-    width: 176px;
-    box-shadow: 0 0 0 18px rgba(255, 255, 255, 0.15), 0 0 0 36px rgba(44, 106, 204, 0.06);
-}
-
 footer p {
     position: relative;
     z-index: 1;
@@ -658,7 +663,8 @@ footer p {
 
 @media (max-width: 1000px) {
     .navbar {
-        width: min(100% - 24px, 1200px);
+        width: 100%;
+        max-width: none;
         padding: 0 20px;
     }
 
@@ -691,7 +697,7 @@ footer p {
         padding: 16px 18px;
         flex-wrap: wrap;
         gap: 14px;
-        border-radius: 16px;
+        border-radius: 0;
     }
 
     nav {
@@ -925,6 +931,12 @@ footer p {
     color: white;
     font-size: 22px;
     font-weight: 800;
+}
+
+.goal-icon .ui-icon {
+    width: 23px;
+    height: 23px;
+    filter: brightness(0) invert(1);
 }
 
 .goal-box h3 {
@@ -2163,9 +2175,9 @@ footer p {
     }
 }
 
-/* FINAL HERO IMAGE POSITION */
+/* Index hero image and navigation overlay */
 
-.hero {
+.index-page .hero {
     background-image:
         linear-gradient(90deg,
             rgba(5, 45, 65, 0.88) 0%,
@@ -2177,30 +2189,52 @@ footer p {
     background-position: 75% center !important;
     background-repeat: no-repeat !important;
 
+    width: 100%;
+    max-width: none;
+    min-height: 480px;
+    margin: 0;
     padding-right: 30px;
-    box-sizing: border-box;
+    border-radius: 0;
 }
 
-/* Keep text on the left */
-.hero-content {
-    width: 55%;
-    max-width: 650px;
+.index-page .hero > .navbar {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    width: min(1250px, calc(100% - 48px));
+    height: auto;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    transform: translateX(-50%);
+    backdrop-filter: none;
+}
+
+.index-page .hero-content {
+    width: 100%;
+    max-width: 1250px;
+    margin: 0 auto;
+    padding-top: 132px;
     position: relative;
     z-index: 2;
 }
 
 /* Hide the old drawn clinic */
-.hero .clinic-image {
+.index-page .hero .clinic-image {
     display: none !important;
 }
 
 @media (max-width: 768px) {
-    .hero {
+    .index-page .hero {
         background-position: 68% center !important;
     }
 
-    .hero-content {
+    .index-page .hero-content {
         width: 100%;
+        padding-top: 190px;
     }
 }
 
@@ -2216,7 +2250,7 @@ footer p {
     background: linear-gradient(180deg, #0a3f7a 0%, #072d5b 100%);
     color: #fff;
     overflow: hidden;
-    border-radius: 18px 18px 0 0;
+    border-radius: 0;
 }
 
 .footer-inner {
@@ -2425,7 +2459,7 @@ footer p {
     box-sizing: border-box;
     background: #073F73;
     color: #ffffff;
-    border-radius: 18px 18px 0 0;
+    border-radius: 0;
     font-family: Arial, sans-serif;
 }
 
@@ -2614,77 +2648,38 @@ footer p {
 }
 
 /* ================= LOGIN PAGE STYLES ================= */
-* {
+body.login-wrapper,
+body.login-wrapper * {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body.login-wrapper {
-    background-color: #f0f4f8;
-    height: 100vh;
+    min-height: 100vh;
+    margin: 0;
+    padding: 24px;
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: radial-gradient(circle at top left, #e5efff 0, #f3f6fb 48%, #edf3fa 100%);
 }
 
 .login-card {
     display: flex;
-    width: 900px;
-    height: 550px;
+    width: min(100%, 400px);
+    min-height: 380px;
+    margin: auto;
+    padding: 32px;
     background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(21, 54, 102, 0.12);
     overflow: hidden;
 }
 
-/* Wala nga Bahin (Branding & Illustration) */
-.login-left-section {
-    flex: 1;
-    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    padding: 40px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    position: relative;
-}
-
-.login-brand {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.login-logo-img {
-    width: 45px;
-    height: 45px;
-    object-fit: contain;
-}
-
-.login-brand h2 {
-    font-size: 22px;
-    color: #0d47a1;
-    font-weight: 700;
-}
-
-.login-brand p {
-    font-size: 11px;
-    color: #1565c0;
-    line-height: 1.2;
-}
-
-.login-quote h3 {
-    font-size: 24px;
-    color: #0d47a1;
-    font-weight: 600;
-    line-height: 1.4;
-}
-
-/* Tuo nga Bahin (Login Form) */
 .login-right-section {
-    flex: 1;
-    padding: 50px 40px;
+    width: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -2692,54 +2687,76 @@ body.login-wrapper {
 
 .login-right-section h2 {
     font-size: 24px;
-    color: #1a202c;
-    margin-bottom: 25px;
+    line-height: 1.25;
+    color: #102b50;
+    margin: 0 0 18px;
     font-weight: 700;
+    text-align: center;
 }
 
 .login-input-group {
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
+    height: 44px;
 }
 
 .login-input-group .input-icon {
     position: absolute;
-    left: 15px;
+    left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 16px;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    pointer-events: none;
 }
 
 .login-input-group input {
     width: 100%;
-    padding: 14px 15px 14px 45px;
-    border: 1px solid #cbd5e1;
+    height: 100%;
+    padding: 0 48px;
+    border: 0;
     border-radius: 8px;
+    background: #eaf1ff;
+    color: #102b50;
     font-size: 14px;
     outline: none;
-    transition: border-color 0.2s;
+    transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .login-input-group input:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: #f5f8ff;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.28);
 }
 
 .toggle-password {
     position: absolute;
-    right: 15px;
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 7px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
     cursor: pointer;
-    font-size: 16px;
-    color: #64748b;
+}
+
+.toggle-password img {
+    display: block;
+    width: 18px;
+    height: 18px;
 }
 
 .login-options {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
+    gap: 12px;
+    margin: 0 0 18px;
     font-size: 13px;
     color: #475569;
 }
@@ -2749,6 +2766,11 @@ body.login-wrapper {
     align-items: center;
     gap: 6px;
     cursor: pointer;
+    white-space: nowrap;
+}
+
+.login-options input {
+    accent-color: #2563eb;
 }
 
 .forgot-link {
@@ -2762,46 +2784,80 @@ body.login-wrapper {
 
 .login-submit-btn {
     width: 100%;
-    padding: 14px;
+    min-height: 44px;
+    padding: 10px 16px;
     background-color: #2563eb;
-    color: white;
+    color: #ffffff;
     border: none;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.2s;
 }
 
 .login-submit-btn:hover {
     background-color: #1d4ed8;
+    transform: translateY(-1px);
 }
 
-.register-prompt {
+.login-submit-btn:focus-visible,
+.toggle-password:focus-visible,
+.forgot-link:focus-visible,
+.login-registration a:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.35);
+    outline-offset: 3px;
+}
+
+.login-registration {
     text-align: center;
-    margin-top: 20px;
+    margin: 22px 0 0;
     font-size: 13px;
     color: #64748b;
 }
 
-.register-prompt a {
+.login-registration a {
     color: #2563eb;
     text-decoration: none;
     font-weight: 600;
 }
 
-.register-prompt a:hover {
+.login-registration a:hover {
     text-decoration: underline;
 }
 
+.login-success,
 .login-error {
-    background-color: #fee2e2;
-    color: #991b1b;
     padding: 10px 12px;
     border-radius: 6px;
     font-size: 13px;
-    margin-bottom: 20px;
-    border: 1px solid #fecaca;
+    line-height: 1.45;
+    margin-bottom: 16px;
+}
+
+.login-success {
+    color: #166534;
+    background: #dcfce7;
+}
+
+.login-error {
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+@media (max-width: 480px) {
+    body.login-wrapper {
+        padding: 16px;
+    }
+
+    .login-card {
+        min-height: 380px;
+        padding: 26px 22px;
+    }
+
+    .login-right-section h2 {
+        font-size: 23px;
+    }
 }
 
 /* ================= ADMIN DASHBOARD STYLES ================= */
@@ -3155,4 +3211,11 @@ body.admin-dashboard-body {
         font-size: 12px;
         padding: 8px 13px;
     }
+}
+
+/* Keep every public/admin page borderless, including component overrides. */
+html body *:not(#shrcms-border-reset),
+html body *:not(#shrcms-border-reset)::before,
+html body *:not(#shrcms-border-reset)::after {
+    border: none !important;
 }

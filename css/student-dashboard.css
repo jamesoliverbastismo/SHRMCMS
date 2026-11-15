@@ -45,6 +45,15 @@ body.student-dashboard-body {
     font-size: 14px;
 }
 
+.ui-icon {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
 .student-dashboard-body a {
     -webkit-tap-highlight-color: transparent;
 }
@@ -172,6 +181,15 @@ body.student-dashboard-body {
     line-height: 1;
 }
 
+.student-sidebar .ui-icon {
+    filter: brightness(0) invert(1);
+}
+
+.nav-icon .ui-icon {
+    width: 18px;
+    height: 18px;
+}
+
 .student-sidebar-bottom {
     margin-top: auto;
     padding-top: 25px;
@@ -239,6 +257,11 @@ body.student-dashboard-body {
     background: #e5eeff;
     color: var(--student-blue);
     font-size: 21px;
+}
+
+.student-avatar .ui-icon {
+    width: 22px;
+    height: 22px;
 }
 
 .student-profile-info {
@@ -424,6 +447,11 @@ body.student-dashboard-body {
     font-size: 20px;
 }
 
+.student-stat-icon .ui-icon {
+    width: 20px;
+    height: 20px;
+}
+
 .icon-blue {
     background: #e8f0ff;
     color: var(--student-blue);
@@ -499,6 +527,11 @@ body.student-dashboard-body {
     background: #eaf1ff;
     color: var(--student-blue);
     font-size: 19px;
+}
+
+.student-details-symbol .ui-icon {
+    width: 21px;
+    height: 21px;
 }
 
 .student-details-grid {
@@ -617,6 +650,11 @@ body.student-dashboard-body {
     margin-bottom: 10px;
     color: #a2b9e2;
     font-size: 25px;
+}
+
+.student-empty-icon .ui-icon {
+    width: 30px;
+    height: 30px;
 }
 
 .student-empty strong {
@@ -874,4 +912,11 @@ body.student-dashboard-body {
     .student-view-link {
         align-self: flex-start;
     }
+}
+
+/* Keep every student page borderless, including component overrides. */
+html body *:not(#shrcms-border-reset),
+html body *:not(#shrcms-border-reset)::before,
+html body *:not(#shrcms-border-reset)::after {
+    border: none !important;
 }

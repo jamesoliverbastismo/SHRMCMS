@@ -2,8 +2,9 @@
 document.addEventListener("DOMContentLoaded", function () {
     const passwordInput = document.getElementById("loginPassword");
     const toggleButton = document.getElementById("togglePassword");
+    const toggleIcon = toggleButton ? toggleButton.querySelector("img") : null;
 
-    if (!passwordInput || !toggleButton) {
+    if (!passwordInput || !toggleButton || !toggleIcon) {
         return;
     }
 
@@ -12,7 +13,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         passwordInput.type = isPasswordHidden ? "text" : "password";
 
-        toggleButton.textContent = isPasswordHidden ? "🙈" : "👁";
+        toggleIcon.src = isPasswordHidden
+            ? toggleButton.dataset.hideIcon
+            : toggleButton.dataset.showIcon;
 
         toggleButton.setAttribute(
             "aria-label",

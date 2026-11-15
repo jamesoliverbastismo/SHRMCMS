@@ -29,6 +29,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `admin` (
   `id` int(11) NOT NULL,
+  `admin_id_no` varchar(20) NOT NULL,
   `username` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -40,8 +41,8 @@ CREATE TABLE `admin` (
 -- Dumping data for table `admin`
 --
 
-INSERT INTO `admin` (`id`, `username`, `email`, `password`, `created_at`, `student_id_no`) VALUES
-(1, 'admin', 'admin@shrcms.com', 'admin123', '2026-10-13 05:56:59', NULL);
+INSERT INTO `admin` (`id`, `admin_id_no`, `username`, `email`, `password`, `created_at`, `student_id_no`) VALUES
+(1, 'ADMIN-0001', 'admin', 'admin@shrcms.com', 'admin123', '2026-10-13 05:56:59', NULL);
 
 -- --------------------------------------------------------
 
@@ -191,6 +192,8 @@ INSERT INTO `med_cert_requests` (`id`, `student_id`, `student_id_no`, `purpose`,
 
 CREATE TABLE `staff` (
   `id` int(11) NOT NULL,
+  `staff_id_no` varchar(50) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
   `fullname` varchar(100) NOT NULL,
   `role` varchar(50) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
@@ -201,11 +204,11 @@ CREATE TABLE `staff` (
 -- Dumping data for table `staff`
 --
 
-INSERT INTO `staff` (`id`, `fullname`, `role`, `email`, `created_at`) VALUES
-(1, 'olivia', 'Staff', 'jamesoliverbastismo35@gmail.com', '2026-10-13 05:19:31'),
-(2, 'James oliver Bastismo', 'Staff', 'jamesoliverbastismo188@gmail.com', '2026-10-13 05:47:41'),
-(3, 'Jingkie alipuyo', 'Staff', 'jingkiebahobilat@gmail.com', '2026-10-13 06:04:13'),
-(4, 'dutctmilk', 'Staff', 'dutchmilk@gmail.com', '2026-10-31 01:24:02');
+INSERT INTO `staff` (`id`, `staff_id_no`, `password`, `fullname`, `role`, `email`, `created_at`) VALUES
+(1, 'STAFF-0001', NULL, 'olivia', 'Staff', 'jamesoliverbastismo35@gmail.com', '2026-10-13 05:19:31'),
+(2, 'STAFF-0002', NULL, 'James oliver Bastismo', 'Staff', 'jamesoliverbastismo188@gmail.com', '2026-10-13 05:47:41'),
+(3, 'STAFF-0003', NULL, 'Jingkie alipuyo', 'Staff', 'jingkiebahobilat@gmail.com', '2026-10-13 06:04:13'),
+(4, 'STAFF-0004', NULL, 'dutctmilk', 'Staff', 'dutchmilk@gmail.com', '2026-10-31 01:24:02');
 
 -- --------------------------------------------------------
 
@@ -301,6 +304,7 @@ INSERT INTO `users` (`id`, `name`, `email`, `role`, `password`, `status`, `creat
 --
 ALTER TABLE `admin`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_admin_admin_id_no` (`admin_id_no`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`);
 
@@ -346,7 +350,8 @@ ALTER TABLE `med_cert_requests`
 -- Indexes for table `staff`
 --
 ALTER TABLE `staff`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_staff_staff_id_no` (`staff_id_no`);
 
 --
 -- Indexes for table `students`

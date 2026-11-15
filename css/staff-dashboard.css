@@ -20,74 +20,148 @@
     color: #fff;
     display: flex;
     flex-direction: column;
-    padding: 24px 15px;
+    align-items: stretch;
+    padding: 22px 14px;
 }
 
 .staff-brand {
     display: flex;
     align-items: center;
-    gap: 11px;
-    padding: 0 8px 28px;
+    gap: 12px;
+    padding: 2px 8px 24px;
     color: #fff;
 }
 
 .staff-brand img {
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
     object-fit: contain;
     background: #fff;
     border-radius: 50%;
 }
 
-.staff-brand h2 {
+.staff-brand h2,
+.staff-brand strong {
+    display: block;
+    margin: 0;
     font-size: 20px;
-    line-height: 1.3;
+    line-height: 1.2;
 }
 
-.staff-brand p {
+.staff-brand p,
+.staff-brand span {
+    display: block;
+    margin: 3px 0 0;
     color: #c2d8f7;
     font-size: 11px;
 }
 
-.sidebar-label {
+.sidebar-label,
+.staff-nav-label {
+    display: block;
+    width: 100%;
+    margin: 14px 0 7px;
+    padding: 0 12px;
     color: #8eafd9;
     font-size: 10px;
     font-weight: 700;
-    letter-spacing: 1.2px;
-    padding: 15px 12px 8px;
+    letter-spacing: 1.1px;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.staff-sidebar > .sidebar-label,
+.staff-sidebar > .staff-nav-label {
+    margin-top: 0;
 }
 
 .staff-nav {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
 }
 
 .staff-nav a {
     display: flex;
     align-items: center;
+    width: 100%;
+    min-height: 44px;
+    text-align: left;
     gap: 12px;
     color: #d9e8fc;
-    padding: 12px;
-    border-radius: 6px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-left-width: 3px;
+    border-radius: 8px;
     font-size: 13px;
-    transition: 0.2s ease;
+    line-height: 1.35;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .staff-nav a span {
-    width: 21px;
-    text-align: center;
-    font-size: 17px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
 }
 
 .staff-nav a:hover,
 .staff-nav a.active {
-    background: #1765d1;
+    background: #1459b5;
     color: #fff;
 }
 
+.staff-nav a.active {
+    border-left-color: #8bc5ff;
+}
+
+.staff-nav a:focus-visible {
+    outline: 2px solid #b9dcff;
+    outline-offset: 2px;
+}
+
+.staff-nav .sidebar-label,
+.staff-nav .staff-nav-label {
+    margin-top: 18px;
+    margin-bottom: 4px;
+}
+
+.staff-sidebar > .staff-logout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    margin-top: auto;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #ffcece;
+    font-size: 13px;
+    line-height: 1.35;
+    text-decoration: none;
+}
+
+.staff-sidebar > .staff-logout:hover {
+    background: #a52b3b;
+    color: #fff;
+}
+
+.staff-sidebar > .staff-logout:focus-visible {
+    outline: 2px solid #b9dcff;
+    outline-offset: 2px;
+}
+
+.staff-sidebar > .staff-logout .ui-icon {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+}
+
 .staff-nav a.logout-link {
-    margin-top: 10px;
+    margin-top: 8px;
     color: #ffcece;
 }
 
@@ -233,6 +307,11 @@
     padding: 10px 25px;
 }
 
+.welcome-symbol .ui-icon {
+    width: 72px;
+    height: 72px;
+}
+
 /* MODULE CARDS */
 
 .dashboard-section {
@@ -288,6 +367,11 @@
     font-size: 23px;
     font-weight: 700;
     margin-bottom: 15px;
+}
+
+.module-icon .ui-icon {
+    width: 24px;
+    height: 24px;
 }
 
 .blue { background: #e6f0ff; color: #2873dc; }
@@ -356,6 +440,11 @@
     font-size: 22px;
 }
 
+.inventory-small-icon .ui-icon {
+    width: 22px;
+    height: 22px;
+}
+
 .inventory-small-icon.medicine-icon {
     background: #e8efff;
     color: #2868d0;
@@ -412,20 +501,23 @@
         width: 100%;
         min-width: 0;
         min-height: auto;
-        padding: 15px;
+        padding: 16px;
     }
 
     .staff-brand {
-        padding-bottom: 15px;
+        padding-bottom: 18px;
     }
 
     .staff-nav {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
 
-    .staff-nav .sidebar-label {
-        grid-column: 1 / -1;
+    .staff-nav .sidebar-label,
+    .staff-nav .staff-nav-label {
+        margin-top: 14px;
+        text-align: left;
     }
 
     .sidebar-bottom {
@@ -465,11 +557,6 @@
 
     .welcome-panel {
         padding: 22px;
-    }
-
-    .staff-nav a {
-        font-size: 12px;
-        padding: 10px 8px;
     }
 
     .inventory-shortcut {

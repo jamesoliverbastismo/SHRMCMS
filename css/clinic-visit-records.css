@@ -49,6 +49,11 @@
     font-size: 25px;
 }
 
+.cvr-summary-icon .ui-icon {
+    width: 25px;
+    height: 25px;
+}
+
 .cvr-summary-card p {
     margin: 0 0 6px;
     color: #667064;
