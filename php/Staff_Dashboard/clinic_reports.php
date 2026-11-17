@@ -2,6 +2,10 @@
 
 <?php
 session_start();
+if (!empty($_SESSION['must_change_password'])) {
+    header('Location: ../change_initial_password.php');
+    exit();
+}
 
 // Correct database path for a file inside php/staff/
 require_once __DIR__ . '/../db.php';
@@ -125,9 +129,7 @@ $summary = [
     'visits' => 0,
     'examinations' => 0,
     'equipment_types' => 0,
-    'equipment_units' => 0,
-    'equipment_attention' => 0,
-    'overdue_maintenance' => 0
+    'equipment_units' => 0
 ];
 
 $reportRows = [];
@@ -186,29 +188,12 @@ try {
 
     $summary['examinations'] = (int)$rows[0]['total'];
 
-    // Current equipment summary.
+    // Current inventory totals shown in the report statistics.
     $rows = fetchRows(
         $conn,
         "SELECT
             COUNT(*) AS total_types,
-            COALESCE(SUM(quantity), 0) AS total_units,
-            COALESCE(SUM(
-                CASE
-                    WHEN equipment_condition IN (
-                        'Needs Maintenance',
-                        'Under Repair',
-                        'Damaged'
-                    )
-                    THEN 1 ELSE 0
-                END
-            ), 0) AS attention_count,
-            COALESCE(SUM(
-                CASE
-                    WHEN next_maintenance IS NOT NULL
-                     AND next_maintenance < CURDATE()
-                    THEN 1 ELSE 0
-                END
-            ), 0) AS overdue_count
+            COALESCE(SUM(quantity), 0) AS total_units
          FROM equipment_inventory"
     );
 
@@ -217,12 +202,6 @@ try {
 
     $summary['equipment_units'] =
         (int)$rows[0]['total_units'];
-
-    $summary['equipment_attention'] =
-        (int)$rows[0]['attention_count'];
-
-    $summary['overdue_maintenance'] =
-        (int)$rows[0]['overdue_count'];
 
     // Generate the selected report.
     if (
@@ -397,15 +376,9 @@ try {
 
     <nav class="staff-nav">
         <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
-        <a href="student_records.php"><span><img class="ui-icon" src="../../image/icon-profile.svg" alt="" aria-hidden="true"></span> Student Records</a>
         <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
         <a href="health_documentation.php"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
-        <a href="clinic_visit_records.php"><span><img class="ui-icon" src="../../image/icon-calendar.svg" alt="" aria-hidden="true"></span> Clinic Visit Records</a>
-
-        <p class="sidebar-label">INVENTORY MANAGEMENT</p>
-
-        <a href="equipment_inventory.php"><span><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"></span> Equipment Inventory</a>
-        <a href="medicine_inventory.php"><span><img class="ui-icon" src="../../image/icon-capsule.svg" alt="" aria-hidden="true"></span> Medicine Inventory</a>
+        <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
 
         <p class="sidebar-label">REPORTS</p>
 
@@ -431,7 +404,7 @@ try {
             <p class="page-eyebrow">REPORTS AND ANALYTICS</p>
             <h1>Clinic Reports</h1>
             <p class="header-subtitle">
-                Review clinic activity, student records, and equipment status.
+                Review clinic activity, student records, and health documentation.
             </p>
         </div>
 
@@ -703,27 +676,6 @@ try {
             Total records:
             <strong><?= count($reportRows) ?></strong>
         </p>
-    </section>
-
-    <section class="cr-panel">
-        <div class="cr-heading">
-            <div>
-                <h2>Equipment Status Summary</h2>
-                <p>Current inventory status across all registered equipment.</p>
-            </div>
-        </div>
-
-        <div class="cr-equipment-summary">
-            <div>
-                <span>Equipment Needing Attention</span>
-                <strong><?= $summary['equipment_attention'] ?></strong>
-            </div>
-
-            <div>
-                <span>Overdue Maintenance</span>
-                <strong><?= $summary['overdue_maintenance'] ?></strong>
-            </div>
-        </div>
     </section>
 
 </main>

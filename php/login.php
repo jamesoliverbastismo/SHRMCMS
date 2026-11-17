@@ -6,6 +6,56 @@ error_reporting(E_ALL);
 session_start();
 require_once 'db.php';
 
+function needsInitialPasswordChange(mysqli $conn, string $accountType, int $accountId): ?bool
+{
+    try {
+        $tables = $conn->query('SHOW TABLES');
+        if (!$tables) {
+            error_log('Initial password table check failed: ' . $conn->error);
+            return null;
+        }
+
+        $tableExists = false;
+
+        while ($table = $tables->fetch_row()) {
+            if ($table[0] === 'initial_password_changes') {
+                $tableExists = true;
+                break;
+            }
+        }
+        $tables->free();
+
+        if (!$tableExists) {
+            return false;
+        }
+
+        $stmt = $conn->prepare(
+            'SELECT 1 FROM initial_password_changes
+             WHERE account_type = ? AND account_id = ? LIMIT 1'
+        );
+
+        if (!$stmt) {
+            error_log('Initial password status query prepare failed: ' . $conn->error);
+            return null;
+        }
+
+        $stmt->bind_param('si', $accountType, $accountId);
+
+        if (!$stmt->execute()) {
+            error_log('Initial password status query failed: ' . $stmt->error);
+            $stmt->close();
+            return null;
+        }
+
+        $required = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
+        return $required;
+    } catch (mysqli_sql_exception $exception) {
+        error_log('Initial password status lookup failed: ' . $exception->getMessage());
+        return null;
+    }
+}
+
 $error_msg = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -113,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error_msg = 'Staff ID or password is not configured in the database.';
             } else {
                 $stmt_staff = $conn->prepare(
-                    "SELECT id, fullname, password FROM staff
+                    "SELECT id, fullname, password, role FROM staff
                      WHERE staff_id_no = ?
                      LIMIT 2"
                 );
@@ -171,15 +221,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             if ($password_valid) {
-                                session_regenerate_id(true);
+                                $staffRole = strtolower(trim(
+                                    (string) ($staff_user['role'] ?? '')
+                                ));
+                                $isTeacher = $staffRole === 'teacher';
+                                $staffId = (int) $staff_user['id'];
+                                $mustChangePassword = needsInitialPasswordChange(
+                                    $conn,
+                                    'staff',
+                                    $staffId
+                                );
 
-                                $_SESSION['admin_logged_in'] = true;
-                                $_SESSION['admin_username'] = $staff_user['fullname'] ?? 'Staff';
-                                $_SESSION['user_role'] = 'Staff';
-                                $_SESSION['user_id'] = (int) $staff_user['id'];
+                                if ($mustChangePassword === null) {
+                                    $error_msg = 'Unable to process your login. Please try again.';
+                                } else {
+                                    session_regenerate_id(true);
 
-                                header('Location: Staff_Dashboard/staff_dashboard.php');
-                                exit;
+                                    $_SESSION['admin_logged_in'] = true;
+                                    $_SESSION['admin_username'] = $staff_user['fullname'] ?? ($isTeacher ? 'Teacher' : 'Staff');
+                                    $_SESSION['user_role'] = $isTeacher ? 'Teacher' : 'Staff';
+                                    $_SESSION['user_id'] = $staffId;
+                                    $_SESSION['staff_id'] = $staffId;
+                                    $_SESSION['auth_account_type'] = 'staff';
+                                    $_SESSION['auth_account_id'] = $staffId;
+                                    $_SESSION['must_change_password'] = $mustChangePassword;
+
+                                    if ($mustChangePassword) {
+                                        header('Location: change_initial_password.php');
+                                        exit;
+                                    }
+
+                                    header(
+                                        'Location: ' . (
+                                            $isTeacher
+                                                ? 'Teacher_Dashboard/teacher_dashboard.php'
+                                                : 'Staff_Dashboard/staff_dashboard.php'
+                                        )
+                                    );
+                                    exit;
+                                }
                             } elseif ($error_msg === '') {
                                 $error_msg = 'Invalid ID or password.';
                             }
@@ -211,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_user = $conn->prepare(
                     "SELECT * FROM users
                      WHERE student_id_no = ?
-                     LIMIT 1"
+                     LIMIT 2"
                 );
 
                 if (!$stmt_user) {
@@ -229,12 +309,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (!$result_user) {
                             error_log('Student user login result failed: ' . $stmt_user->error);
                             $error_msg = 'Unable to process your login. Please try again.';
+                        } elseif ($result_user->num_rows > 1) {
+                            $account_found = true;
+                            $error_msg = 'This Student ID is assigned to multiple accounts. Contact an administrator.';
                         } elseif ($result_user->num_rows > 0) {
                             $account_found = true;
                             $user = $result_user->fetch_assoc();
                             $stored_password = (string) $user['password'];
 
-                            if (
+                            if (strtolower((string)($user['status'] ?? 'Active')) !== 'active') {
+                                $error_msg = 'Invalid ID or password.';
+                            } elseif (
                                 password_verify($password, $stored_password) ||
                                 hash_equals($stored_password, $password)
                             ) {
@@ -244,24 +329,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $role = 'student';
                                 }
 
-                                session_regenerate_id(true);
+                                $userId = (int)$user['id'];
+                                $accountType = $role === 'student' ? 'student' : null;
+                                $mustChangePassword = $accountType !== null
+                                    ? needsInitialPasswordChange($conn, $accountType, $userId)
+                                    : false;
 
-                                $_SESSION['admin_logged_in'] = true;
-                                $_SESSION['admin_username'] = $user['name'] ?? 'User';
-                                $_SESSION['user_role'] = ucfirst($role);
-                                $_SESSION['user_id'] = (int) $user['id'];
-                                $_SESSION['student_id_no'] = $user['student_id_no'] ?? '';
-                                $_SESSION['email'] = $user['email'] ?? '';
-
-                                if ($role === 'staff') {
-                                    header('Location: Staff_Dashboard/staff_dashboard.php');
-                                    exit;
-                                } elseif ($role === 'administrator' || $role === 'admin') {
-                                    header('Location: Admin_Dashboard/admin_dashboard.php');
-                                    exit;
+                                if ($mustChangePassword === null) {
+                                    $error_msg = 'Unable to process your login. Please try again.';
                                 } else {
-                                    header('Location: Student_Dashboard/student_dashboard.php');
-                                    exit;
+                                    session_regenerate_id(true);
+
+                                    $_SESSION['admin_logged_in'] = true;
+                                    $_SESSION['admin_username'] = $user['name'] ?? 'User';
+                                    $_SESSION['user_role'] = ucfirst($role);
+                                    $_SESSION['user_id'] = $userId;
+                                    $_SESSION['student_id_no'] = $user['student_id_no'] ?? '';
+                                    $_SESSION['email'] = $user['email'] ?? '';
+
+                                    if ($accountType !== null) {
+                                        $_SESSION['auth_account_type'] = $accountType;
+                                        $_SESSION['auth_account_id'] = $userId;
+                                        $_SESSION['must_change_password'] = $mustChangePassword;
+
+                                        if ($mustChangePassword) {
+                                            header('Location: change_initial_password.php');
+                                            exit;
+                                        }
+                                    }
+
+                                    if ($role === 'staff') {
+                                        header('Location: Staff_Dashboard/staff_dashboard.php');
+                                        exit;
+                                    } elseif ($role === 'administrator' || $role === 'admin') {
+                                        header('Location: Admin_Dashboard/admin_dashboard.php');
+                                        exit;
+                                    } else {
+                                        header('Location: Student_Dashboard/student_dashboard.php');
+                                        exit;
+                                    }
                                 }
                             } else {
                                 $error_msg = 'Invalid ID or password.';

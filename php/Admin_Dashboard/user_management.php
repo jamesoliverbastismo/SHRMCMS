@@ -1,19 +1,17 @@
 
 <?php
-header('Location: admin_dashboard.php');
-exit();
-
 ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
 session_start();
-require_once 'db.php';
+require_once __DIR__ . '/../db.php';
 
 if (
     !isset($_SESSION['admin_logged_in']) ||
-    $_SESSION['admin_logged_in'] !== true
+    $_SESSION['admin_logged_in'] !== true ||
+    ($_SESSION['user_role'] ?? '') !== 'Administrator'
 ) {
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit();
 }
 
@@ -66,258 +64,324 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ADD OR UPDATE USER
     // -----------------------------------------
     if ($action === 'save') {
-        $id = filter_var(
-            $_POST['id'] ?? 0,
-            FILTER_VALIDATE_INT
-        );
-
+        $idValue = $_POST['id'] ?? 0;
+        $id = filter_var($idValue, FILTER_VALIDATE_INT);
         $id = $id === false ? 0 : (int)$id;
+        $name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
+        $idNumber = is_string($_POST['id_number'] ?? null) ? trim($_POST['id_number']) : '';
+        $emailInput = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
+        $email = $emailInput === '' ? null : $emailInput;
+        $role = is_string($_POST['role'] ?? null) ? $_POST['role'] : '';
+        $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
 
-        $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $role = $_POST['role'] ?? '';
-        $password = $_POST['password'] ?? '';
-
-        if ($name === '' || $email === '') {
-            redirectUsers('Name and email are required.', 'error');
+        if ($name === '' || $idNumber === '') {
+            redirectUsers('Name and login ID are required.', 'error');
         }
-
-        if (mb_strlen($name) > 100) {
-            redirectUsers('Name must not exceed 100 characters.', 'error');
+        if (mb_strlen($name) > 100 || strlen($idNumber) > 50) {
+            redirectUsers('Name or login ID exceeds the allowed length.', 'error');
         }
-
-        if (strlen($email) > 255 ||
-            !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            redirectUsers('Please enter a valid email address.', 'error');
-        }
-
         if (!in_array($role, ['Staff', 'Student'], true)) {
             redirectUsers('Please select a valid account role.', 'error');
         }
-
+        if ($role === 'Staff' && $email === null) {
+            redirectUsers('Staff accounts require an email address for account management.', 'error');
+        }
+        if ($email !== null && (strlen($email) > 100 || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+            redirectUsers('Please enter a valid email address or leave it blank for a student.', 'error');
+        }
         if ($id < 0) {
             redirectUsers('Invalid user ID.', 'error');
         }
-
         if ($id === 0 && strlen($password) < 8) {
-            redirectUsers(
-                'New account passwords must contain at least 8 characters.',
-                'error'
-            );
+            redirectUsers('New account passwords must contain at least 8 characters.', 'error');
         }
-
         if ($password !== '' && strlen($password) < 8) {
-            redirectUsers(
-                'A new password must contain at least 8 characters.',
-                'error'
-            );
+            redirectUsers('A new password must contain at least 8 characters.', 'error');
         }
 
-        // Prevent duplicate emails in users and admin tables.
-        $checkAdmin = $conn->prepare(
-            'SELECT email FROM admin WHERE email = ? LIMIT 1'
-        );
-        $checkAdmin->bind_param('s', $email);
-        $checkAdmin->execute();
-        $adminEmailExists = $checkAdmin->get_result()->num_rows > 0;
-        $checkAdmin->close();
-
-        if ($adminEmailExists) {
-            redirectUsers(
-                'This email belongs to an administrator.',
-                'error'
-            );
-        }
-
-        if ($id > 0) {
-            $check = $conn->prepare(
-                'SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1'
-            );
-            $check->bind_param('si', $email, $id);
-        } else {
-            $check = $conn->prepare(
-                'SELECT id FROM users WHERE email = ? LIMIT 1'
-            );
-            $check->bind_param('s', $email);
-        }
-
-        $check->execute();
-        $duplicate = $check->get_result()->num_rows > 0;
-        $check->close();
-
-        if ($duplicate) {
-            redirectUsers('This email is already registered.', 'error');
-        }
-
-        // Ensure the account exists before editing it.
+        $existingUser = null;
+        $existingRole = '';
+        $existingStaff = null;
+        $studentProfileId = 0;
         if ($id > 0) {
             $findUser = $conn->prepare(
-                'SELECT id, role FROM users WHERE id = ? LIMIT 1'
+                'SELECT id, name, email, role, password, student_id_no
+                 FROM users WHERE id = ? LIMIT 1'
             );
             $findUser->bind_param('i', $id);
             $findUser->execute();
             $existingUser = $findUser->get_result()->fetch_assoc();
             $findUser->close();
-
             if (!$existingUser) {
                 redirectUsers('User account not found.', 'error');
             }
-        }
+            $existingRole = strtolower((string)$existingUser['role']);
 
-        $hashedPassword = null;
+            if ($existingRole === 'staff' && !empty($existingUser['email'])) {
+                $findStaff = $conn->prepare(
+                    'SELECT id, staff_id_no FROM staff WHERE email = ? LIMIT 2'
+                );
+                $findStaff->bind_param('s', $existingUser['email']);
+                $findStaff->execute();
+                $staffResult = $findStaff->get_result();
+                if ($staffResult->num_rows > 1) {
+                    $findStaff->close();
+                    redirectUsers('This staff email is linked to multiple staff records.', 'error');
+                }
+                $existingStaff = $staffResult->fetch_assoc() ?: null;
+                $findStaff->close();
+            }
 
-        if ($password !== '') {
-            $hashedPassword = password_hash(
-                $password,
-                PASSWORD_DEFAULT
+            $profileByUser = $conn->prepare(
+                'SELECT id FROM students WHERE user_id = ? LIMIT 1'
             );
+            $profileByUser->bind_param('i', $id);
+            $profileByUser->execute();
+            $linkedProfile = $profileByUser->get_result()->fetch_assoc();
+            $profileByUser->close();
+            if ($linkedProfile) {
+                $studentProfileId = (int)$linkedProfile['id'];
+            }
         }
+
+        if ($email !== null) {
+            $checkAdmin = $conn->prepare(
+                'SELECT id FROM admin WHERE email = ? LIMIT 1'
+            );
+            $checkAdmin->bind_param('s', $email);
+            $checkAdmin->execute();
+            $adminEmailExists = $checkAdmin->get_result()->num_rows > 0;
+            $checkAdmin->close();
+            if ($adminEmailExists) {
+                redirectUsers('This email belongs to an administrator.', 'error');
+            }
+
+            if ($id > 0) {
+                $checkEmail = $conn->prepare(
+                    'SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1'
+                );
+                $checkEmail->bind_param('si', $email, $id);
+            } else {
+                $checkEmail = $conn->prepare(
+                    'SELECT id FROM users WHERE email = ? LIMIT 1'
+                );
+                $checkEmail->bind_param('s', $email);
+            }
+            $checkEmail->execute();
+            $emailDuplicate = $checkEmail->get_result()->num_rows > 0;
+            $checkEmail->close();
+            if ($emailDuplicate) {
+                redirectUsers('This email is already registered.', 'error');
+            }
+        }
+
+        if ($role === 'Student') {
+            if ($id > 0) {
+                $checkId = $conn->prepare(
+                    'SELECT id FROM users WHERE student_id_no = ? AND id <> ? LIMIT 1'
+                );
+                $checkId->bind_param('si', $idNumber, $id);
+            } else {
+                $checkId = $conn->prepare(
+                    'SELECT id FROM users WHERE student_id_no = ? LIMIT 1'
+                );
+                $checkId->bind_param('s', $idNumber);
+            }
+            $checkId->execute();
+            $duplicateStudentId = $checkId->get_result()->num_rows > 0;
+            $checkId->close();
+            if ($duplicateStudentId) {
+                redirectUsers('This student ID is already assigned to a user account.', 'error');
+            }
+
+            $checkProfile = $conn->prepare(
+                'SELECT id, user_id FROM students WHERE student_id_no = ? LIMIT 1'
+            );
+            $checkProfile->bind_param('s', $idNumber);
+            $checkProfile->execute();
+            $studentProfile = $checkProfile->get_result()->fetch_assoc();
+            $checkProfile->close();
+            if ($studentProfile && !empty($studentProfile['user_id']) && (int)$studentProfile['user_id'] !== $id) {
+                redirectUsers('This student profile is already linked to another user account.', 'error');
+            }
+            if ($studentProfile && $studentProfileId > 0 && (int)$studentProfile['id'] !== $studentProfileId) {
+                redirectUsers('This account is linked to a different student profile.', 'error');
+            }
+            if ($studentProfile) {
+                $studentProfileId = (int)$studentProfile['id'];
+            }
+
+            $checkStaffId = $conn->prepare(
+                'SELECT id FROM staff WHERE staff_id_no = ? LIMIT 1'
+            );
+            $checkStaffId->bind_param('s', $idNumber);
+            $checkStaffId->execute();
+            $staffIdCollision = $checkStaffId->get_result()->num_rows > 0;
+            $checkStaffId->close();
+            if ($staffIdCollision) {
+                redirectUsers('This ID is already assigned to a staff account.', 'error');
+            }
+        } else {
+            if ($existingStaff) {
+                $checkStaffId = $conn->prepare(
+                    'SELECT id FROM staff WHERE staff_id_no = ? AND id <> ? LIMIT 1'
+                );
+                $existingStaffId = (int)$existingStaff['id'];
+                $checkStaffId->bind_param('si', $idNumber, $existingStaffId);
+            } else {
+                $checkStaffId = $conn->prepare(
+                    'SELECT id FROM staff WHERE staff_id_no = ? LIMIT 1'
+                );
+                $checkStaffId->bind_param('s', $idNumber);
+            }
+            $checkStaffId->execute();
+            $duplicateStaffId = $checkStaffId->get_result()->num_rows > 0;
+            $checkStaffId->close();
+            if ($duplicateStaffId) {
+                redirectUsers('This staff ID is already assigned to another account.', 'error');
+            }
+
+            $checkStudentId = $conn->prepare(
+                'SELECT id FROM students WHERE student_id_no = ? LIMIT 1'
+            );
+            $checkStudentId->bind_param('s', $idNumber);
+            $checkStudentId->execute();
+            $studentIdCollision = $checkStudentId->get_result()->num_rows > 0;
+            $checkStudentId->close();
+            if ($studentIdCollision) {
+                redirectUsers('This ID is already assigned to a student account.', 'error');
+            }
+        }
+
+        $accountPassword = $password !== ''
+            ? password_hash($password, PASSWORD_DEFAULT)
+            : (string)($existingUser['password'] ?? '');
+        if ($accountPassword === '') {
+            redirectUsers('A password is required for this account.', 'error');
+        }
+        $studentIdNo = $role === 'Student' ? $idNumber : null;
 
         try {
             $conn->begin_transaction();
-
             if ($id > 0) {
-                if ($hashedPassword !== null) {
-                    $stmt = $conn->prepare(
-                        'UPDATE users
-                         SET name = ?, email = ?, role = ?, password = ?
-                         WHERE id = ?'
-                    );
-                    $stmt->bind_param(
-                        'ssssi',
-                        $name,
-                        $email,
-                        $role,
-                        $hashedPassword,
-                        $id
-                    );
-                } else {
-                    $stmt = $conn->prepare(
-                        'UPDATE users
-                         SET name = ?, email = ?, role = ?
-                         WHERE id = ?'
-                    );
-                    $stmt->bind_param(
-                        'sssi',
-                        $name,
-                        $email,
-                        $role,
-                        $id
-                    );
-                }
-
+                $stmt = $conn->prepare(
+                    'UPDATE users
+                     SET name = ?, email = ?, role = ?, password = ?, student_id_no = ?
+                     WHERE id = ?'
+                );
+                $stmt->bind_param('sssssi', $name, $email, $role, $accountPassword, $studentIdNo, $id);
                 $stmt->execute();
                 $stmt->close();
-
-                // Synchronize the staff record by the original email.
-                $oldEmail = $existingUser['role'] === 'Staff'
-                    ? null
-                    : null;
-
-                // Look up staff using the account's previous email.
-                // The email is obtained from the staff table by matching
-                // the user ID's previous account details below.
-                $findStaff = $conn->prepare(
-                    'SELECT id FROM staff WHERE email = ? LIMIT 1'
-                );
-
-                // We use the previous email captured before updating below
-                // in a production schema that links staff by user_id.
-                // Here the staff table is synchronized using the new email.
-                $findStaff->bind_param('s', $email);
-                $findStaff->execute();
-                $staffResult = $findStaff->get_result();
-                $staffExists = $staffResult->fetch_assoc();
-                $findStaff->close();
-
-                if ($role === 'Staff') {
-                    if ($staffExists) {
-                        $updateStaff = $conn->prepare(
-                            'UPDATE staff SET fullname = ?, role = ?, email = ?
-                             WHERE id = ?'
-                        );
-                        $staffId = (int)$staffExists['id'];
-                        $updateStaff->bind_param(
-                            'sssi',
-                            $name,
-                            $role,
-                            $email,
-                            $staffId
-                        );
-                        $updateStaff->execute();
-                        $updateStaff->close();
-                    } else {
-                        $insertStaff = $conn->prepare(
-                            'INSERT INTO staff (fullname, role, email)
-                             VALUES (?, ?, ?)'
-                        );
-                        $insertStaff->bind_param(
-                            'sss',
-                            $name,
-                            $role,
-                            $email
-                        );
-                        $insertStaff->execute();
-                        $insertStaff->close();
-                    }
-                } elseif ($existingUser['role'] === 'Staff') {
-                    // Remove the staff record if the role changes to Student.
-                    $deleteStaff = $conn->prepare(
-                        'DELETE FROM staff WHERE email = ?'
-                    );
-                    $oldStaffEmail = $email;
-                    $deleteStaff->bind_param('s', $oldStaffEmail);
-                    $deleteStaff->execute();
-                    $deleteStaff->close();
-                }
-
-                $conn->commit();
-                redirectUsers('User account updated successfully.');
-
+                $userId = $id;
             } else {
                 $status = 'Active';
-
                 $stmt = $conn->prepare(
-                    'INSERT INTO users (name, email, role, password, status)
-                     VALUES (?, ?, ?, ?, ?)'
+                    'INSERT INTO users (name, email, role, password, status, student_id_no)
+                     VALUES (?, ?, ?, ?, ?, ?)'
                 );
-                $stmt->bind_param(
-                    'sssss',
-                    $name,
-                    $email,
-                    $role,
-                    $hashedPassword,
-                    $status
-                );
+                $stmt->bind_param('ssssss', $name, $email, $role, $accountPassword, $status, $studentIdNo);
                 $stmt->execute();
+                $userId = (int)$conn->insert_id;
                 $stmt->close();
+            }
 
-                if ($role === 'Staff') {
-                    $staff = $conn->prepare(
-                        'INSERT INTO staff (fullname, role, email)
-                         VALUES (?, ?, ?)'
+            if ($role === 'Student') {
+                if ($existingStaff) {
+                    $deleteStaff = $conn->prepare('DELETE FROM staff WHERE id = ?');
+                    $existingStaffId = (int)$existingStaff['id'];
+                    $deleteStaff->bind_param('i', $existingStaffId);
+                    $deleteStaff->execute();
+                    $deleteStaff->close();
+                    $accountType = 'staff';
+                    $deletePasswordFlag = $conn->prepare(
+                        'DELETE FROM initial_password_changes WHERE account_type = ? AND account_id = ?'
                     );
-                    $staff->bind_param('sss', $name, $role, $email);
-                    $staff->execute();
-                    $staff->close();
+                    $deletePasswordFlag->bind_param('si', $accountType, $existingStaffId);
+                    $deletePasswordFlag->execute();
+                    $deletePasswordFlag->close();
                 }
 
-                $conn->commit();
-                redirectUsers('New user account created successfully.');
+                if ($studentProfileId > 0) {
+                    $studentStmt = $conn->prepare(
+                        'UPDATE students
+                         SET student_id_no = ?, fullname = ?, user_id = ?, email = ?, password = ?
+                         WHERE id = ?'
+                    );
+                    $studentStmt->bind_param(
+                        'ssissi',
+                        $idNumber,
+                        $name,
+                        $userId,
+                        $email,
+                        $accountPassword,
+                        $studentProfileId
+                    );
+                } else {
+                    $studentStmt = $conn->prepare(
+                        'INSERT INTO students (student_id_no, fullname, user_id, email, password)
+                         VALUES (?, ?, ?, ?, ?)'
+                    );
+                    $studentStmt->bind_param('ssiss', $idNumber, $name, $userId, $email, $accountPassword);
+                }
+                $studentStmt->execute();
+                $studentStmt->close();
+            } else {
+                if ($studentProfileId > 0) {
+                    $detachStudent = $conn->prepare(
+                        'UPDATE students SET user_id = NULL, password = NULL WHERE user_id = ?'
+                    );
+                    $detachStudent->bind_param('i', $userId);
+                    $detachStudent->execute();
+                    $detachStudent->close();
+                    $accountType = 'student';
+                    $deletePasswordFlag = $conn->prepare(
+                        'DELETE FROM initial_password_changes WHERE account_type = ? AND account_id = ?'
+                    );
+                    $deletePasswordFlag->bind_param('si', $accountType, $userId);
+                    $deletePasswordFlag->execute();
+                    $deletePasswordFlag->close();
+                }
+
+                if ($existingStaff) {
+                    $staffStmt = $conn->prepare(
+                        'UPDATE staff
+                         SET staff_id_no = ?, password = ?, fullname = ?, role = ?, email = ?
+                         WHERE id = ?'
+                    );
+                    $existingStaffId = (int)$existingStaff['id'];
+                    $staffStmt->bind_param(
+                        'sssssi',
+                        $idNumber,
+                        $accountPassword,
+                        $name,
+                        $role,
+                        $email,
+                        $existingStaffId
+                    );
+                } else {
+                    $staffStmt = $conn->prepare(
+                        'INSERT INTO staff (staff_id_no, password, fullname, role, email)
+                         VALUES (?, ?, ?, ?, ?)'
+                    );
+                    $staffStmt->bind_param('sssss', $idNumber, $accountPassword, $name, $role, $email);
+                }
+                $staffStmt->execute();
+                $staffStmt->close();
             }
+
+            $conn->commit();
+            redirectUsers(
+                $id > 0 ? 'User account updated successfully.' : 'New user account created successfully.'
+            );
         } catch (Throwable $exception) {
             $conn->rollback();
-
             error_log('User management save failed: ' . $exception->getMessage());
-
             redirectUsers(
-                'Could not save the account. Check your database structure and try again.',
+                'Could not save the account. Check the ID number and database structure, then try again.',
                 'error'
             );
         }
     }
-
-    // -----------------------------------------
     // ACTIVATE / DEACTIVATE ACCOUNT
     // -----------------------------------------
     if ($action === 'toggle_status') {
@@ -365,7 +429,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $stmt = $conn->prepare(
-            'SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1'
+            'SELECT id, name, email, role, student_id_no
+             FROM users WHERE id = ? LIMIT 1'
         );
         $stmt->bind_param('i', $id);
         $stmt->execute();
@@ -379,13 +444,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn->begin_transaction();
 
-            if ($user['role'] === 'Staff') {
+            if (strtolower((string)$user['role']) === 'staff') {
                 $staff = $conn->prepare(
-                    'DELETE FROM staff WHERE email = ?'
+                    'SELECT id FROM staff WHERE email = ? LIMIT 2'
                 );
                 $staff->bind_param('s', $user['email']);
                 $staff->execute();
+                $staffResult = $staff->get_result();
+                if ($staffResult->num_rows > 1) {
+                    $staff->close();
+                    throw new RuntimeException('Staff email is linked to multiple staff records.');
+                }
+                $staffRecord = $staffResult->fetch_assoc();
                 $staff->close();
+                if ($staffRecord) {
+                    $staffId = (int)$staffRecord['id'];
+                    $deleteStaff = $conn->prepare('DELETE FROM staff WHERE id = ?');
+                    $deleteStaff->bind_param('i', $staffId);
+                    $deleteStaff->execute();
+                    $deleteStaff->close();
+                    $accountType = 'staff';
+                    $deleteFlag = $conn->prepare(
+                        'DELETE FROM initial_password_changes WHERE account_type = ? AND account_id = ?'
+                    );
+                    $deleteFlag->bind_param('si', $accountType, $staffId);
+                    $deleteFlag->execute();
+                    $deleteFlag->close();
+                }
+            } elseif (strtolower((string)$user['role']) === 'student') {
+                $studentId = (int)$user['id'];
+                $detachStudent = $conn->prepare(
+                    'UPDATE students SET user_id = NULL, password = NULL WHERE user_id = ?'
+                );
+                $detachStudent->bind_param('i', $studentId);
+                $detachStudent->execute();
+                $detachStudent->close();
+                $accountType = 'student';
+                $deleteFlag = $conn->prepare(
+                    'DELETE FROM initial_password_changes WHERE account_type = ? AND account_id = ?'
+                );
+                $deleteFlag->bind_param('si', $accountType, $studentId);
+                $deleteFlag->execute();
+                $deleteFlag->close();
             }
 
             $delete = $conn->prepare(
@@ -424,8 +524,16 @@ $editId = filter_var($_GET['edit'] ?? null, FILTER_VALIDATE_INT);
 
 if ($editId && $editId > 0) {
     $stmt = $conn->prepare(
-        'SELECT id, name, email, role, status
-         FROM users WHERE id = ? LIMIT 1'
+        "SELECT u.id, u.name, u.email, u.role, u.status,
+                CASE
+                    WHEN LOWER(u.role) = 'student' THEN u.student_id_no
+                    WHEN LOWER(u.role) = 'staff' THEN staff.staff_id_no
+                    ELSE NULL
+                END AS login_id
+         FROM users u
+         LEFT JOIN staff
+            ON staff.email = u.email AND LOWER(u.role) = 'staff'
+         WHERE u.id = ? LIMIT 1"
     );
     $stmt->bind_param('i', $editId);
     $stmt->execute();
@@ -442,18 +550,30 @@ if ($editId && $editId > 0) {
 // SEARCH AND LIST USERS
 // =============================================
 
-$sql = 'SELECT id, name, email, role, status FROM users';
+$sql = "SELECT u.id, u.name, u.email, u.role, u.status,
+               CASE
+                   WHEN LOWER(u.role) = 'student' THEN u.student_id_no
+                   WHEN LOWER(u.role) = 'staff' THEN staff.staff_id_no
+                   ELSE NULL
+               END AS login_id
+        FROM users u
+        LEFT JOIN staff
+            ON staff.email = u.email AND LOWER(u.role) = 'staff'";
 $params = [];
 $types = '';
 
 if ($search !== '') {
-    $sql .= ' WHERE name LIKE ? OR email LIKE ? OR role LIKE ? OR CAST(id AS CHAR) LIKE ?';
+    $sql .= " WHERE u.name LIKE ?
+        OR COALESCE(u.email, '') LIKE ?
+        OR u.role LIKE ?
+        OR CAST(u.id AS CHAR) LIKE ?
+        OR COALESCE(u.student_id_no, staff.staff_id_no, '') LIKE ?";
     $term = '%' . $search . '%';
-    $params = [$term, $term, $term, $term];
-    $types = 'ssss';
+    $params = [$term, $term, $term, $term, $term];
+    $types = 'sssss';
 }
 
-$sql .= ' ORDER BY id DESC';
+$sql .= ' ORDER BY u.id DESC';
 
 $stmt = $conn->prepare($sql);
 
@@ -490,130 +610,18 @@ $staffUsers = (int)($conn->query(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management | SHRCMS</title>
-    <link rel="stylesheet" href="../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../css/admin-dashboard.css?v=20261115-admin-menu-cleanup">
+    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/admin-dashboard.css?v=20261117-admin-operations">
 
-    <style>
-        .um-content { padding: 28px; }
-        .um-cards {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
-            margin-bottom: 24px;
-        }
-        .um-card, .um-panel {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            padding: 22px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, .04);
-        }
-        .um-card span { color: #64748b; font-size: 13px; }
-        .um-card strong {
-            display: block; margin-top: 10px;
-            color: #08275c; font-size: 28px;
-        }
-        .um-panel { margin-bottom: 24px; }
-        .um-heading {
-            margin: 0 0 7px; color: #0f2345; font-size: 19px;
-        }
-        .um-subtitle {
-            margin: 0 0 20px; color: #64748b;
-            font-size: 13px; line-height: 1.6;
-        }
-        .um-form {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-        }
-        .um-field label {
-            display: block; margin-bottom: 7px;
-            color: #334155; font-size: 13px; font-weight: 600;
-        }
-        .um-field input, .um-field select, .um-search input {
-            width: 100%; min-height: 42px; padding: 10px 12px;
-            border: 1px solid #cbd5e1; background: #fff;
-            color: #1e293b; font-size: 13px;
-        }
-        .um-field input:focus, .um-field select:focus,
-        .um-search input:focus {
-            outline: 2px solid #bfdbfe; border-color: #2563eb;
-        }
-        .um-help {
-            display: block; margin-top: 6px;
-            color: #64748b; font-size: 11px; line-height: 1.5;
-        }
-        .um-actions {
-            display: flex; flex-wrap: wrap; align-items: center;
-            gap: 8px; margin-top: 20px;
-        }
-        .um-btn {
-            display: inline-flex; justify-content: center;
-            align-items: center; min-height: 38px; padding: 9px 13px;
-            border: 0; cursor: pointer; font-size: 12px;
-            font-weight: 700; text-decoration: none;
-        }
-        .um-primary { background: #1765e8; color: #fff; }
-        .um-primary:hover { background: #0e55ce; }
-        .um-light { background: #edf2f7; color: #334155; }
-        .um-edit { background: #e0f2fe; color: #075985; }
-        .um-delete { background: #fee2e2; color: #991b1b; }
-        .um-toggle { background: #fef3c7; color: #92400e; }
-        .um-alert {
-            padding: 13px 16px; margin-bottom: 20px;
-            font-size: 13px; line-height: 1.6;
-        }
-        .um-alert-success { background: #dcfce7; color: #166534; }
-        .um-alert-error { background: #fee2e2; color: #991b1b; }
-        .um-table-wrap { width: 100%; overflow-x: auto; }
-        .um-table {
-            width: 100%; border-collapse: collapse;
-            text-align: left; font-size: 13px;
-        }
-        .um-table th {
-            padding: 14px 12px; background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-            color: #64748b; white-space: nowrap;
-        }
-        .um-table td {
-            padding: 13px 12px; border-bottom: 1px solid #edf2f7;
-            color: #475569; vertical-align: middle;
-        }
-        .um-table tr:hover td { background: #fbfdff; }
-        .um-user-name { color: #1e293b; font-weight: 700; }
-        .um-badge {
-            display: inline-block; padding: 5px 9px;
-            font-size: 11px; font-weight: 700;
-        }
-        .um-active { background: #dcfce7; color: #166534; }
-        .um-inactive { background: #fee2e2; color: #991b1b; }
-        .um-role { background: #eaf1ff; color: #1d4ed8; }
-        .um-row-actions {
-            display: flex; flex-wrap: wrap; gap: 6px;
-        }
-        .um-row-actions form { display: inline; margin: 0; }
-        .um-search {
-            display: flex; gap: 9px; margin-bottom: 18px;
-        }
-        .um-search input { max-width: 400px; }
-        .um-empty { padding: 35px !important; text-align: center; color: #94a3b8 !important; }
-        .um-required { color: #dc2626; }
-        @media (max-width: 850px) {
-            .um-content { padding: 18px; }
-            .um-cards { grid-template-columns: 1fr; gap: 12px; }
-            .um-form { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 480px) {
-            .um-search { flex-direction: column; }
-            .um-search input { max-width: none; }
-        }
-    </style>
+
+    <link rel="stylesheet" href="../../css/user-management.css">
 </head>
 
 <body class="admin-dashboard-body">
 
 <aside class="admin-sidebar">
     <div class="admin-sidebar-brand">
-        <img src="../image/logo2.png" alt="SHRCMS Logo">
+        <img src="../../image/logo2.png" alt="SHRCMS Logo">
         <div>
             <h3>SHRCMS</h3>
             <p>Clinic Management</p>
@@ -621,12 +629,12 @@ $staffUsers = (int)($conn->query(
     </div>
 
     <nav>
-        <a href="admin_dashboard.php"><img class="ui-icon" src="../image/icon-dashboard.svg" alt="" aria-hidden="true"> Dashboard</a>
-        <a href="user_management.php" class="active"><img class="ui-icon" src="../image/icon-users.svg" alt="" aria-hidden="true"> User Management</a>
-        <a href="staff_management.php"><img class="ui-icon" src="../image/icon-staff.svg" alt="" aria-hidden="true"> Staff Management</a>
-        <a href="system_reports.php"><img class="ui-icon" src="../image/icon-reports.svg" alt="" aria-hidden="true"> System Reports</a>
-        <a href="system_settings.php"><img class="ui-icon" src="../image/icon-settings.svg" alt="" aria-hidden="true"> System Settings</a>
-        <a href="logout.php" class="logout-link"><img class="ui-icon" src="../image/icon-logout.svg" alt="" aria-hidden="true"> Logout</a>
+        <a href="admin_dashboard.php"><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"> Dashboard</a>
+        <a href="user_management.php" class="active"><img class="ui-icon" src="../../image/icon-users.svg" alt="" aria-hidden="true"> User Accounts</a>
+        <a href="staff_management.php"><img class="ui-icon" src="../../image/icon-staff.svg" alt="" aria-hidden="true"> Staff Management</a>
+        <a href="system_reports.php"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"> System Reports</a>
+        <a href="system_settings.php"><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"> System Settings</a>
+        <a href="../logout.php" class="logout-link"><img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"> Logout</a>
     </nav>
 </aside>
 
@@ -635,7 +643,7 @@ $staffUsers = (int)($conn->query(
         <h2>User Management</h2>
 
         <div class="admin-profile-info">
-            <img src="../image/logo2.png" alt="Administrator">
+            <img src="../../image/logo2.png" alt="Administrator">
             <div class="admin-profile-text">
                 <h4><?= e($_SESSION['admin_username'] ?? 'Administrator') ?></h4>
                 <p>Administrator</p>
@@ -667,14 +675,44 @@ $staffUsers = (int)($conn->query(
             </div>
         </div>
 
+        <section class="um-panel" aria-labelledby="um-roster-heading">
+            <h2 class="um-heading" id="um-roster-heading">Import staff, teacher, and student accounts</h2>
+            <p class="um-subtitle">
+                Upload a UTF-8 CSV with the exact header
+                <code>role,id_number,full_name,email,birthday,course_year</code>.
+                Use Student, Staff, or Teacher for role and YYYY-MM-DD for birthday.
+                Email may be blank for students; staff and teachers still need an email.
+                Course/year may be blank for staff and teachers.
+            </p>
+
+            <pre class="um-csv-example">role,id_number,full_name,email,birthday,course_year
+Student,STUDENT-ID,Example Student,,2005-04-15,BSIT-1ST YR
+Teacher,TEACHER-ID,Example Teacher,teacher@example.edu,1985-09-20,</pre>
+
+            <p class="um-subtitle">
+                Birthday is used only as a temporary password, hashed immediately, and not stored as a date.
+                Users must choose a new password at first login. Existing IDs are updated; missing accounts are created.
+                The complete file is validated and imported as one transaction, with a limit of 500 rows.
+            </p>
+
+            <form action="import_user_roster.php" method="POST" enctype="multipart/form-data"
+                  class="um-roster-form">
+                <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                <label for="roster-csv">CSV file</label>
+                <input id="roster-csv" type="file" name="roster_csv" accept=".csv,text/csv"
+                       required>
+                <button class="um-btn um-primary" type="submit">Upload and import CSV</button>
+            </form>
+        </section>
+
         <section class="um-panel" id="user-form">
             <h2 class="um-heading">
                 <?= $editingUser ? 'Edit User Account' : 'Add New User' ?>
             </h2>
             <p class="um-subtitle">
                 <?= $editingUser
-                    ? 'Update the account details below. Leave the password blank to keep the current password.'
-                    : 'Create a staff or student account for SHRCMS.' ?>
+                    ? 'Update the account details below. The ID is used to log in. Leave the password blank to keep the current password.'
+                    : 'Create an account using the student or staff ID as the login ID. Email is not used to log in.' ?>
             </p>
 
             <form action="user_management.php" method="POST">
@@ -697,14 +735,27 @@ $staffUsers = (int)($conn->query(
                     </div>
 
                     <div class="um-field">
-                        <label for="email">Email Address <span class="um-required">*</span></label>
+                        <label for="id_number">Student ID / Staff ID <span class="um-required">*</span></label>
+                        <input
+                            type="text"
+                            id="id_number"
+                            name="id_number"
+                            maxlength="50"
+                            required
+                            placeholder="Enter the ID used to log in"
+                            value="<?= e($editingUser['login_id'] ?? '') ?>"
+                        >
+                        <small class="um-help">Students log in with their student ID; staff log in with their staff ID.</small>
+                    </div>
+
+                    <div class="um-field">
+                        <label for="email">Email Address <span class="um-help">(optional for students)</span></label>
                         <input
                             type="email"
                             id="email"
                             name="email"
-                            maxlength="255"
-                            required
-                            placeholder="Enter email address"
+                            maxlength="100"
+                            placeholder="Contact email (not used to log in)"
                             value="<?= e($editingUser['email'] ?? '') ?>"
                         >
                     </div>
@@ -713,11 +764,11 @@ $staffUsers = (int)($conn->query(
                         <label for="role">Account Role <span class="um-required">*</span></label>
                         <select id="role" name="role" required>
                             <option value="Staff"
-                                <?= ($editingUser['role'] ?? '') === 'Staff' ? 'selected' : '' ?>>
+                                <?= strtolower((string)($editingUser['role'] ?? '')) === 'staff' ? 'selected' : '' ?>>
                                 Staff
                             </option>
                             <option value="Student"
-                                <?= ($editingUser['role'] ?? '') === 'Student' ? 'selected' : '' ?>>
+                                <?= strtolower((string)($editingUser['role'] ?? '')) === 'student' ? 'selected' : '' ?>>
                                 Student
                             </option>
                         </select>
@@ -772,7 +823,7 @@ $staffUsers = (int)($conn->query(
                     type="search"
                     name="search"
                     value="<?= e($search) ?>"
-                    placeholder="Search name, email, role, or ID..."
+                    placeholder="Search name, login ID, email, or role..."
                     aria-label="Search user accounts"
                 >
                 <button class="um-btn um-primary" type="submit">Search</button>
@@ -787,6 +838,7 @@ $staffUsers = (int)($conn->query(
                     <tr>
                         <th>Account ID</th>
                         <th>Name</th>
+                        <th>Login ID</th>
                         <th>Email</th>
                         <th>Role</th>
                         <th>Status</th>
@@ -806,7 +858,8 @@ $staffUsers = (int)($conn->query(
                                 </td>
 
                                 <td class="um-user-name"><?= e($user['name']) ?></td>
-                                <td><?= e($user['email']) ?></td>
+                                <td><?= e($user['login_id'] ?? '') ?></td>
+                                <td><?= e($user['email'] ?? '') ?></td>
 
                                 <td>
                                     <span class="um-badge um-role">

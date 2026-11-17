@@ -1,0 +1,534 @@
+.medical-content {
+    width: min(1100px, 100%);
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.medical-panel {
+    margin-bottom: 24px;
+    border: 1px solid #e3e9e3;
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(25, 55, 32, 0.04);
+}
+
+.medical-panel-heading {
+    padding: 22px 24px;
+    border-bottom: 1px solid #edf0ed;
+}
+
+.medical-panel-heading h2 {
+    margin: 0 0 7px;
+    color: #263d2c;
+    font-size: 19px;
+}
+
+.medical-panel-heading p {
+    margin: 0;
+    color: #78847a;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.certificate-student-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 0;
+    padding: 22px 24px;
+}
+
+.certificate-student-details div {
+    min-width: 0;
+}
+
+.certificate-student-details dt {
+    margin-bottom: 5px;
+    color: #78847a;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.certificate-student-details dd {
+    margin: 0;
+    color: #26372a;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.medical-form {
+    padding: 24px;
+}
+
+.medical-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.medical-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.medical-field-wide {
+    grid-column: 1 / -1;
+}
+
+.medical-field label {
+    color: #35483a;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.medical-field label span {
+    color: #c3483e;
+}
+
+.medical-field input,
+.medical-field textarea {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid #d8e0d8;
+    background: #fff;
+    color: #26372a;
+    font: inherit;
+    font-size: 13px;
+}
+
+.medical-field textarea {
+    min-height: 100px;
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.medical-privacy-note {
+    margin: 22px 0 0;
+    padding: 12px 14px;
+    border-left: 3px solid #8aa78d;
+    background: #f5f8f5;
+    color: #657366;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.medical-actions,
+.certificate-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.medical-actions {
+    margin-top: 22px;
+}
+
+.medical-button {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 13px;
+    border: 0;
+    background: #315c3b;
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.medical-button-primary {
+    background: #315c3b;
+    color: #fff;
+}
+
+.medical-button-light {
+    border: 1px solid #d8e0d8;
+    background: #fff;
+    color: #405544;
+}
+
+.medical-alert {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border: 1px solid #edcfca;
+    background: #fff2f0;
+    color: #a13d33;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.certificate-page {
+    width: min(1000px, 100%);
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.certificate-controls {
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+
+.certificate-sheet {
+    min-height: 850px;
+    padding: 54px 60px;
+    border: 1px solid #d8e0d8;
+    background: #fff;
+    box-shadow: 0 4px 18px rgba(25, 55, 32, 0.08);
+    color: #26372a;
+}
+
+.certificate-heading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding-bottom: 22px;
+    border-bottom: 2px solid #315c3b;
+    text-align: center;
+}
+
+.certificate-heading img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+}
+
+.certificate-heading p {
+    margin: 0 0 8px;
+    color: #526457;
+    font-size: 10px;
+    letter-spacing: .08em;
+}
+
+.certificate-heading h1 {
+    margin: 0;
+    color: #203b28;
+    font-size: 23px;
+}
+
+.certificate-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin: 22px 0 36px;
+    font-size: 12px;
+}
+
+.certificate-to-whom {
+    margin-bottom: 18px;
+    font-weight: 700;
+}
+
+.certificate-statement {
+    margin-bottom: 28px;
+    font-size: 14px;
+    line-height: 1.9;
+}
+
+.certificate-section {
+    margin: 18px 0;
+    padding: 14px 16px;
+    border: 1px solid #e3e9e3;
+    background: #fbfdfb;
+}
+
+.certificate-section h2 {
+    margin: 0 0 8px;
+    color: #315c3b;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.certificate-section p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.certificate-note {
+    margin-top: 30px;
+    color: #627064;
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.certificate-signature {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 70px;
+    text-align: center;
+}
+
+.certificate-signature > div {
+    display: flex;
+    min-width: 240px;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.signature-line {
+    display: block;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #26372a;
+}
+
+.certificate-signature strong {
+    font-size: 13px;
+}
+
+.certificate-signature small {
+    color: #627064;
+    font-size: 11px;
+}
+
+.certificate-approval-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 48px;
+}
+
+.certificate-qr-block {
+    display: grid;
+    justify-items: center;
+    gap: 7px;
+    color: #627064;
+    font-size: 10px;
+    text-align: center;
+}
+
+.certificate-qr-block img {
+    display: block;
+    width: 140px;
+    height: 140px;
+    image-rendering: pixelated;
+}
+
+.certificate-verification-page,
+.certificate-scanner-page {
+    max-width: 760px;
+}
+
+.certificate-verification-card,
+.certificate-scanner-card {
+    padding: 30px;
+    border: 1px solid #d8e0d8;
+    background: #fff;
+    box-shadow: 0 4px 18px rgba(25, 55, 32, 0.08);
+}
+
+.certificate-verification-card > img {
+    display: block;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    object-fit: contain;
+}
+
+.certificate-verification-card h1 {
+    margin: 0 0 10px;
+    text-align: center;
+}
+
+.certificate-verification-eyebrow,
+.certificate-verification-status {
+    color: #627064;
+    text-align: center;
+}
+
+.certificate-verification-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+}
+
+.certificate-verification-card.is-valid h1 {
+    color: #166534;
+}
+
+.certificate-verification-card.is-invalid h1 {
+    color: #a13d33;
+}
+
+.certificate-verification-card dl {
+    display: grid;
+    grid-template-columns: minmax(140px, .7fr) 1fr;
+    gap: 9px 16px;
+    margin: 24px 0;
+    padding: 18px;
+    background: #f7faf7;
+}
+
+.certificate-verification-card dt {
+    color: #627064;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.certificate-verification-card dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.certificate-verification-card > .medical-button {
+    display: flex;
+    width: fit-content;
+    margin: 20px auto 0;
+}
+
+.certificate-scanner-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.certificate-scanner-heading h1 {
+    margin: 0 0 8px;
+}
+
+.certificate-scanner-heading p:last-child {
+    margin: 0;
+    color: #627064;
+    font-size: 13px;
+}
+
+.certificate-scanner-video-wrap {
+    position: relative;
+    display: grid;
+    min-height: 280px;
+    place-items: center;
+    overflow: hidden;
+    background: #17231a;
+    color: #fff;
+}
+
+.certificate-scanner-video-wrap video {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+}
+
+.certificate-scanner-video-wrap video[hidden],
+.certificate-scanner-video-wrap #certificate-camera-placeholder[hidden] {
+    display: none;
+}
+
+.certificate-scanner-card > p {
+    min-height: 22px;
+    color: #536255;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.certificate-code-form {
+    display: grid;
+    gap: 8px;
+    margin-top: 26px;
+    padding-top: 22px;
+    border-top: 1px solid #e3e9e3;
+}
+
+.certificate-code-form label {
+    color: #35483a;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.certificate-code-form > div {
+    display: flex;
+    gap: 8px;
+}
+
+.certificate-code-form input {
+    flex: 1;
+    min-width: 0;
+    min-height: 40px;
+    padding: 9px 11px;
+    border: 1px solid #d8e0d8;
+    font: inherit;
+}
+
+@media (max-width: 700px) {
+    .medical-content,
+    .certificate-page {
+        padding: 16px;
+    }
+
+    .certificate-student-details,
+    .medical-form-grid,
+    .certificate-verification-card dl {
+        grid-template-columns: 1fr;
+    }
+
+    .medical-field-wide {
+        grid-column: auto;
+    }
+
+    .certificate-sheet {
+        min-height: 0;
+        padding: 28px 22px;
+    }
+
+    .certificate-meta {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .certificate-approval-footer,
+    .certificate-scanner-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .certificate-verification-card,
+    .certificate-scanner-card {
+        padding: 20px;
+    }
+
+    .certificate-code-form > div {
+        flex-direction: column;
+    }
+}
+
+@page {
+    size: letter;
+    margin: 18mm;
+}
+
+@media print {
+    body {
+        background: #fff !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .certificate-page {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .certificate-sheet {
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .certificate-approval-footer {
+        page-break-inside: avoid;
+    }
+}

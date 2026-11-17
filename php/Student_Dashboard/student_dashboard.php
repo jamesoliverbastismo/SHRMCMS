@@ -1,5 +1,9 @@
 <?php
 session_start();
+if (!empty($_SESSION['must_change_password'])) {
+    header('Location: ../change_initial_password.php');
+    exit();
+}
 
 if (
     !isset($_SESSION['admin_logged_in']) ||

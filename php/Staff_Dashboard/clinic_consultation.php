@@ -5,6 +5,10 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
+if (!empty($_SESSION['must_change_password'])) {
+    header('Location: ../change_initial_password.php');
+    exit();
+}
 require_once __DIR__ . '/../db.php';
 
 if (
@@ -264,14 +268,9 @@ $username = e($_SESSION['admin_username'] ?? 'Staff');
 
     <nav class="staff-nav">
         <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
-        <a href="student_records.php"><span><img class="ui-icon" src="../../image/icon-profile.svg" alt="" aria-hidden="true"></span> Student Records</a>
         <a href="clinic_consultation.php" class="active"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
         <a href="health_documentation.php"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
-        <a href="clinic_visit_records.php"><span><img class="ui-icon" src="../../image/icon-calendar.svg" alt="" aria-hidden="true"></span> Clinic Visit Records</a>
-
-        <p class="sidebar-label">INVENTORY MANAGEMENT</p>
-        <a href="equipment_inventory.php"><span><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"></span> Equipment Inventory</a>
-        <a href="medicine_inventory.php"><span><img class="ui-icon" src="../../image/icon-capsule.svg" alt="" aria-hidden="true"></span> Medicine Inventory</a>
+        <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
 
         <p class="sidebar-label">REPORTS</p>
         <a href="clinic_reports.php"><span><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"></span> Clinic Reports</a>

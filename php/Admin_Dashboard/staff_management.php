@@ -273,11 +273,12 @@ $total_staff = (int)($count_result->fetch_assoc()['total'] ?? 0);
         </div>
     </div>
 
-    <nav>
+    <nav aria-label="Administrator navigation">
         <a href="admin_dashboard.php"><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"> Dashboard</a>
-        <a href="staff_management.php" class="active"><img class="ui-icon" src="../../image/icon-staff.svg" alt="" aria-hidden="true"> Staff Management</a>
-        <a href="system_reports.php"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"> System Reports</a>
-        <a href="system_settings.php"><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"> System Settings</a>
+        <a href="user_management.php"><img class="ui-icon" src="../../image/icon-users.svg" alt="" aria-hidden="true"> User Accounts</a>
+        <a href="staff_management.php" class="active" aria-current="page"><img class="ui-icon" src="../../image/icon-staff.svg" alt="" aria-hidden="true"> Staff Management</a>
+        <a href="system_reports.php"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"> Clinic Reports</a>
+        <a href="system_settings.php"><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"> Security &amp; Settings</a>
         <a href="../logout.php" class="logout-link"
            onclick="return confirm('Are you sure you want to log out?')">
             <img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"> Logout

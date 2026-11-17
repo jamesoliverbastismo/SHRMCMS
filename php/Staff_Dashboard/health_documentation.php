@@ -4,6 +4,10 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
+if (!empty($_SESSION['must_change_password'])) {
+    header('Location: ../change_initial_password.php');
+    exit();
+}
 
 require_once __DIR__ . '/../db.php';
 
@@ -47,23 +51,14 @@ function goBack(string $message, string $type = 'success'): void
     exit();
 }
 
-function validDate(string $date): bool
+function postedString(string $key): string
 {
-    $parsed = DateTime::createFromFormat('!Y-m-d', $date);
-    $errors = DateTime::getLastErrors();
-
-    return $parsed !== false
-        && $parsed->format('Y-m-d') === $date
-        && ($errors === false || (
-            $errors['warning_count'] === 0 &&
-            $errors['error_count'] === 0
-        ));
+    $value = $_POST[$key] ?? '';
+    return is_string($value) ? trim($value) : '';
 }
 
 $message = trim($_GET['message'] ?? '');
 $messageType = ($_GET['type'] ?? '') === 'error' ? 'error' : 'success';
-$search = trim($_GET['search'] ?? '');
-$editingDocument = null;
 
 /*
 |--------------------------------------------------------------------------
@@ -81,19 +76,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $_POST['action'] ?? '';
 
-    // Action 1: Approve Request for Visit
+    // Action 1: Complete the physical exam and approve the certificate
     if ($action === 'approve_request') {
         $reqId = filter_var($_POST['req_id'] ?? null, FILTER_VALIDATE_INT);
-        if (!$reqId || $reqId < 1) {
+        $heightInput = postedString('height_cm');
+        $weightInput = postedString('weight_kg');
+        $temperatureInput = postedString('temperature');
+        $bloodPressure = postedString('blood_pressure');
+        $physicalFindings = postedString('physical_findings');
+        $diagnosis = postedString('diagnosis');
+        $recommendation = postedString('recommendation');
+
+        if ($reqId === false || !$reqId || $reqId < 1) {
             goBack('Invalid request ID.', 'error');
         }
 
-        $stmt = $conn->prepare("UPDATE med_cert_requests SET status = 'Approved' WHERE id = ?");
-        $stmt->bind_param('i', $reqId);
+        $measurements = [
+            'Height' => [$heightInput, 30, 250],
+            'Weight' => [$weightInput, 1, 500],
+            'Temperature' => [$temperatureInput, 25, 45]
+        ];
+        foreach ($measurements as $label => [$value, $minimum, $maximum]) {
+            if (
+                $value !== '' &&
+                (!is_numeric($value) || (float)$value < $minimum || (float)$value > $maximum)
+            ) {
+                goBack($label . ' is outside the accepted input range.', 'error');
+            }
+        }
+
+        if ($bloodPressure !== '' && mb_strlen($bloodPressure) > 20) {
+            goBack('Blood pressure must not exceed 20 characters.', 'error');
+        }
+        if ($physicalFindings === '' || mb_strlen($physicalFindings) > 5000) {
+            goBack('Enter physical examination findings (up to 5,000 characters).', 'error');
+        }
+        if (mb_strlen($diagnosis) > 3000 || mb_strlen($recommendation) > 3000) {
+            goBack('Staff findings and recommendations must be 3,000 characters or fewer.', 'error');
+        }
+
+        $height = $heightInput === '' ? null : $heightInput;
+        $weight = $weightInput === '' ? null : $weightInput;
+        $temperature = $temperatureInput === '' ? null : $temperatureInput;
+        $approvedBy = mb_substr(
+            trim((string)($_SESSION['admin_username'] ?? 'Clinic Staff')),
+            0,
+            100
+        );
+        $issuedDate = date('Y-m-d');
+        $certificateCode = 'MC-' . strtoupper(bin2hex(random_bytes(16)));
+        $examDate = $issuedDate;
+
+        $stmt = $conn->prepare(
+            "UPDATE med_cert_requests
+             SET status = 'Approved', height_cm = ?, weight_kg = ?, temperature = ?,
+                 blood_pressure = ?, physical_findings = ?, diagnosis = ?,
+                 recommendation = ?, qr_code_hash = ?, approved_by = ?,
+                 issued_date = ?, examination_date = ?
+             WHERE id = ?
+               AND (status = 'Pending'
+                    OR (status = 'Approved' AND (qr_code_hash IS NULL OR qr_code_hash = '')))"
+        );
+        $stmt->bind_param(
+            str_repeat('s', 11) . 'i',
+            $height,
+            $weight,
+            $temperature,
+            $bloodPressure,
+            $physicalFindings,
+            $diagnosis,
+            $recommendation,
+            $certificateCode,
+            $approvedBy,
+            $issuedDate,
+            $examDate,
+            $reqId
+        );
         $stmt->execute();
+        $approved = $stmt->affected_rows;
         $stmt->close();
 
-        goBack('Request approved! Student can now visit clinic for vital signs examination.');
+        goBack(
+            $approved
+                ? 'Physical examination recorded and medical certificate approved.'
+                : 'This request was already processed or could not be found.',
+            $approved ? 'success' : 'error'
+        );
     }
 
     // Action 2: Reject Request
@@ -103,219 +171,250 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             goBack('Invalid request ID.', 'error');
         }
 
-        $stmt = $conn->prepare("UPDATE med_cert_requests SET status = 'Rejected' WHERE id = ?");
+        $stmt = $conn->prepare(
+            "UPDATE med_cert_requests
+             SET status = 'Rejected'
+             WHERE id = ? AND qr_code_hash IS NULL
+               AND status IN ('Pending', 'Approved')"
+        );
         $stmt->bind_param('i', $reqId);
         $stmt->execute();
-        $stmt->close();
-
-        goBack('Medical Certificate request has been rejected.');
-    }
-
-    // Action 3: Issue Final Med Cert + Generate Unique QR Code Hash
-    if ($action === 'generate_cert') {
-        $reqId = filter_var($_POST['req_id'] ?? null, FILTER_VALIDATE_INT);
-        $diagnosis = trim($_POST['diagnosis'] ?? '');
-        $recommendation = trim($_POST['recommendation'] ?? '');
-        $issuedDate = date('Y-m-d');
-        $approvedBy = $_SESSION['admin_username'] ?? 'Clinic Staff';
-
-        if (!$reqId || $reqId < 1) {
-            goBack('Invalid request ID.', 'error');
-        }
-
-        if ($diagnosis === '' || $recommendation === '') {
-            goBack('Please fill out both diagnosis and recommendation fields.', 'error');
-        }
-
-        // Generate Unique Hash for Verification (e.g., MC-9F8A2B1C)
-        $qrHash = 'MC-' . strtoupper(substr(md5(uniqid((string)rand(), true)), 0, 8));
-
-        $stmt = $conn->prepare(
-            "UPDATE med_cert_requests 
-             SET status = 'Completed', diagnosis = ?, recommendation = ?, qr_code_hash = ?, approved_by = ?, issued_date = ? 
-             WHERE id = ?"
-        );
-        $stmt->bind_param('sssssi', $diagnosis, $recommendation, $qrHash, $approvedBy, $issuedDate, $reqId);
-        $stmt->execute();
-        $stmt->close();
-
-        goBack('Medical Certificate issued successfully with QR Verification Code: ' . $qrHash);
-    }
-
-    // Action 4: Delete Physical Exam Record
-    if ($action === 'delete') {
-        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
-
-        if (!$id || $id < 1) {
-            goBack('Invalid examination record.', 'error');
-        }
-
-        $stmt = $conn->prepare('DELETE FROM health_documentation WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $deleted = $stmt->affected_rows;
+        $rejected = $stmt->affected_rows;
         $stmt->close();
 
         goBack(
-            $deleted
-                ? 'Physical examination record deleted successfully.'
-                : 'Examination record not found.',
-            $deleted ? 'success' : 'error'
+            $rejected
+                ? 'Medical Certificate request has been rejected.'
+                : 'The request could not be rejected because it was already processed.',
+            $rejected ? 'success' : 'error'
         );
     }
 
-    // Action 5: Save/Update Physical Exam Record
-    if ($action === 'save') {
-        $id = filter_var($_POST['id'] ?? 0, FILTER_VALIDATE_INT);
-        $studentIdNo = trim($_POST['student_id_no'] ?? '');
-        $examinationDate = trim($_POST['examination_date'] ?? '');
-        $heightInput = trim($_POST['height_cm'] ?? '');
-        $weightInput = trim($_POST['weight_kg'] ?? '');
-        $temperatureInput = trim($_POST['temperature'] ?? '');
-        $bloodPressure = trim($_POST['blood_pressure'] ?? '');
-        $findings = trim($_POST['findings'] ?? '');
-        $remarks = trim($_POST['remarks'] ?? '');
-        $recordedBy = trim($_SESSION['admin_username'] ?? 'Clinic Staff');
+    // Legacy form action retained only to prevent bypassing the physical exam.
+    if ($action === 'generate_cert') {
+        goBack('Complete and record the physical examination before approving the certificate.', 'error');
+    }
 
-        if ($id === false || $id < 0) {
-            goBack('Invalid examination record ID.', 'error');
+    if ($action === 'create_walkin_certificate') {
+        $studentName = postedString('student_name');
+        $studentIdNo = postedString('student_id_no');
+        $courseYear = postedString('course_year');
+        $ageInput = postedString('age');
+        $gender = postedString('gender');
+        $contact = postedString('contact');
+        $emailInput = postedString('email');
+        $purpose = postedString('purpose');
+        $allergies = postedString('allergies');
+        $currentMedications = postedString('current_medications');
+        $medicalHistory = postedString('medical_history');
+        $menstrualHistory = postedString('menstrual_history');
+        $alcoholUse = postedString('alcohol_use');
+        $tobaccoUse = postedString('tobacco_use');
+        $familyTb = postedString('family_history_tuberculosis');
+        $familyHypertension = postedString('family_history_hypertension');
+        $familyDiabetes = postedString('family_history_diabetes');
+        $familyHeartDisease = postedString('family_history_heart_disease');
+        $familyOther = postedString('family_history_other');
+        $heightInput = postedString('height_cm');
+        $weightInput = postedString('weight_kg');
+        $temperatureInput = postedString('temperature');
+        $bloodPressure = postedString('blood_pressure');
+        $physicalFindings = postedString('physical_findings');
+        $diagnosis = postedString('diagnosis');
+        $recommendation = postedString('recommendation');
+        $email = $emailInput === '' ? null : $emailInput;
+
+        if ($studentName === '' || mb_strlen($studentName) > 100) {
+            goBack('Enter the student name (100 characters or fewer).', 'error');
+        }
+        if ($studentIdNo === '' || mb_strlen($studentIdNo) > 50) {
+            goBack('Enter the student ID (50 characters or fewer).', 'error');
+        }
+        if (mb_strlen($courseYear) > 50 || mb_strlen($contact) > 50) {
+            goBack('Course/year or contact information exceeds the allowed length.', 'error');
+        }
+        $age = null;
+        if ($ageInput !== '') {
+            $ageValue = filter_var($ageInput, FILTER_VALIDATE_INT);
+            if ($ageValue === false || $ageValue < 1 || $ageValue > 120) {
+                goBack('Age must be a whole number between 1 and 120.', 'error');
+            }
+            $age = (string)$ageValue;
+        }
+        $genderOptions = ['Female', 'Male', 'Non-binary', 'Other', 'Prefer not to say'];
+        if ($gender !== '' && !in_array($gender, $genderOptions, true)) {
+            goBack('Select a valid gender response.', 'error');
+        }
+        if ($email !== null && (
+            mb_strlen($email) > 100 ||
+            !filter_var($email, FILTER_VALIDATE_EMAIL)
+        )) {
+            goBack('Enter a valid email address or leave it blank.', 'error');
+        }
+        if ($purpose === '' || mb_strlen($purpose) > 255) {
+            goBack('Enter the certificate purpose (255 characters or fewer).', 'error');
+        }
+        if (($_POST['confirmed_with_student'] ?? '') !== 'yes') {
+            goBack('Confirm that the personal and interview information was checked with the student.', 'error');
         }
 
-        if ($studentIdNo === '') {
-            goBack('Please select a student.', 'error');
-        }
-
-        if (!validDate($examinationDate)) {
-            goBack('Please enter a valid examination date.', 'error');
-        }
-
-        if ($examinationDate > date('Y-m-d')) {
-            goBack('The examination date cannot be in the future.', 'error');
-        }
-
-        $measurements = [
-            'Height' => [$heightInput, 30, 250],
-            'Weight' => [$weightInput, 1, 500],
-            'Temperature' => [$temperatureInput, 25, 45]
+        $choiceFields = [
+            [$menstrualHistory, ['Not applicable', 'Regular', 'Irregular', 'Not asked', 'Prefer not to answer']],
+            [$alcoholUse, ['No', 'Yes', 'Not asked', 'Prefer not to answer']],
+            [$tobaccoUse, ['No', 'Yes', 'Not asked', 'Prefer not to answer']],
+            [$familyTb, ['No', 'Yes', 'Unknown', 'Prefer not to answer']],
+            [$familyHypertension, ['No', 'Yes', 'Unknown', 'Prefer not to answer']],
+            [$familyDiabetes, ['No', 'Yes', 'Unknown', 'Prefer not to answer']],
+            [$familyHeartDisease, ['No', 'Yes', 'Unknown', 'Prefer not to answer']]
         ];
-
-        foreach ($measurements as $label => [$value, $min, $max]) {
-            if ($value !== '' &&
-                (!is_numeric($value) ||
-                 (float)$value < $min ||
-                 (float)$value > $max)) {
-                goBack($label . ' is outside the accepted input range.', 'error');
+        foreach ($choiceFields as [$value, $allowedValues]) {
+            if (!in_array($value, $allowedValues, true)) {
+                goBack('Choose valid responses for the student interview questions.', 'error');
             }
         }
 
-        if ($bloodPressure !== '' && mb_strlen($bloodPressure) > 20) {
+        foreach ([
+            'Allergies' => [$allergies, 2000],
+            'Current medications' => [$currentMedications, 2000],
+            'Medical history' => [$medicalHistory, 3000],
+            'Other family history' => [$familyOther, 2000],
+            'Physical findings' => [$physicalFindings, 5000],
+            'Staff assessment' => [$diagnosis, 3000],
+            'Recommendations' => [$recommendation, 3000]
+        ] as $label => [$value, $limit]) {
+            if (mb_strlen($value) > $limit) {
+                goBack($label . ' exceeds the allowed length.', 'error');
+            }
+        }
+
+        if ($physicalFindings === '') {
+            goBack('Enter the physical examination findings before generating the certificate.', 'error');
+        }
+
+        foreach ([
+            'Height' => [$heightInput, 30, 250],
+            'Weight' => [$weightInput, 1, 500],
+            'Temperature' => [$temperatureInput, 25, 45]
+        ] as $label => [$value, $minimum, $maximum]) {
+            if (
+                $value !== '' &&
+                (!is_numeric($value) || (float)$value < $minimum || (float)$value > $maximum)
+            ) {
+                goBack($label . ' is outside the accepted input range.', 'error');
+            }
+        }
+        if (mb_strlen($bloodPressure) > 20) {
             goBack('Blood pressure must not exceed 20 characters.', 'error');
         }
 
-        if ($findings === '' && $remarks === '' &&
-            $heightInput === '' && $weightInput === '' &&
-            $temperatureInput === '' && $bloodPressure === '') {
-            goBack('Enter at least one examination measurement, finding, or remark.', 'error');
-        }
+        $height = $heightInput === '' ? null : $heightInput;
+        $weight = $weightInput === '' ? null : $weightInput;
+        $temperature = $temperatureInput === '' ? null : $temperatureInput;
+        $approvedBy = mb_substr(
+            trim((string)($_SESSION['admin_username'] ?? 'Clinic Staff')),
+            0,
+            100
+        );
+        $issuedDate = date('Y-m-d');
+        $certificateCode = 'MC-' . strtoupper(bin2hex(random_bytes(16)));
+        $requestStatus = 'Approved';
 
-        $height = $heightInput === '' ? null : (float)$heightInput;
-        $weight = $weightInput === '' ? null : (float)$weightInput;
-        $temperature = $temperatureInput === '' ? null : (float)$temperatureInput;
-        $recordedBy = mb_substr($recordedBy, 0, 100);
-
-        $checkStudent = $conn->prepare('SELECT student_id_no FROM students WHERE student_id_no = ? LIMIT 1');
-        $checkStudent->bind_param('s', $studentIdNo);
-        $checkStudent->execute();
-        $studentExists = $checkStudent->get_result()->num_rows > 0;
-        $checkStudent->close();
-
-        if (!$studentExists) {
-            goBack('The selected student does not exist.', 'error');
-        }
-
-        if ($id > 0) {
+        try {
             $stmt = $conn->prepare(
-                'UPDATE health_documentation
-                 SET student_id_no = ?, examination_date = ?, height_cm = ?, weight_kg = ?, temperature = ?, blood_pressure = ?, findings = ?, remarks = ?, recorded_by = ?
-                 WHERE id = ?'
+                'INSERT INTO med_cert_requests (
+                    student_id, student_id_no, purpose, status, student_name,
+                    course_year, age, gender, contact, email, allergies,
+                    current_medications, medical_history, menstrual_history,
+                    alcohol_use, tobacco_use, family_history_tuberculosis,
+                    family_history_hypertension, family_history_diabetes,
+                    family_history_heart_disease, family_history_other, height_cm,
+                    weight_kg, temperature, blood_pressure, physical_findings,
+                    diagnosis, recommendation, qr_code_hash, approved_by,
+                    issued_date, examination_date
+                 ) VALUES (
+                    NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                 )'
             );
-            $stmt->bind_param('ssdddssssi', $studentIdNo, $examinationDate, $height, $weight, $temperature, $bloodPressure, $findings, $remarks, $recordedBy, $id);
-            $stmt->execute();
-            $stmt->close();
-            goBack('Physical examination record updated successfully.');
-        } else {
-            $stmt = $conn->prepare(
-                'INSERT INTO health_documentation
-                 (student_id_no, examination_date, height_cm, weight_kg, temperature, blood_pressure, findings, remarks, recorded_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            $stmt->bind_param(
+                str_repeat('s', 31),
+                $studentIdNo,
+                $purpose,
+                $requestStatus,
+                $studentName,
+                $courseYear,
+                $age,
+                $gender,
+                $contact,
+                $email,
+                $allergies,
+                $currentMedications,
+                $medicalHistory,
+                $menstrualHistory,
+                $alcoholUse,
+                $tobaccoUse,
+                $familyTb,
+                $familyHypertension,
+                $familyDiabetes,
+                $familyHeartDisease,
+                $familyOther,
+                $height,
+                $weight,
+                $temperature,
+                $bloodPressure,
+                $physicalFindings,
+                $diagnosis,
+                $recommendation,
+                $certificateCode,
+                $approvedBy,
+                $issuedDate,
+                $issuedDate
             );
-            $stmt->bind_param('ssdddssss', $studentIdNo, $examinationDate, $height, $weight, $temperature, $bloodPressure, $findings, $remarks, $recordedBy);
             $stmt->execute();
+            $requestId = (int)$stmt->insert_id;
             $stmt->close();
-            goBack('Physical examination record saved successfully.');
+            header('Location: ../print_medical_certificate_request.php?id=' . $requestId);
+            exit();
+        } catch (mysqli_sql_exception $exception) {
+            error_log('Walk-in medical certificate creation failed: ' . $exception->getMessage());
+            goBack('The walk-in certificate could not be saved. Check the student details and try again.', 'error');
         }
     }
+
 }
 
-// Load Record for Editing
-$editId = filter_var($_GET['edit'] ?? null, FILTER_VALIDATE_INT);
-if ($editId && $editId > 0) {
-    $stmt = $conn->prepare('SELECT * FROM health_documentation WHERE id = ? LIMIT 1');
-    $stmt->bind_param('i', $editId);
-    $stmt->execute();
-    $editingDocument = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+$searchTerm = isset($_GET['search']) && is_string($_GET['search'])
+    ? trim($_GET['search'])
+    : '';
 
-    if (!$editingDocument) {
-        $message = 'Examination record not found.';
-        $messageType = 'error';
-    }
+$requestSql = "SELECT r.*,
+                      COALESCE(NULLIF(r.student_name, ''), s.fullname) AS request_student_name,
+                      COALESCE(NULLIF(r.course_year, ''), s.course_year) AS request_course_year
+               FROM med_cert_requests r
+               LEFT JOIN students s ON s.id = r.student_id";
+
+if ($searchTerm === '') {
+    $medCertRequests = $conn->query($requestSql . ' ORDER BY r.id DESC');
+} else {
+    $searchPattern = '%' . $searchTerm . '%';
+    $requestStmt = $conn->prepare(
+        $requestSql . "
+        WHERE COALESCE(NULLIF(r.student_name, ''), s.fullname) LIKE ?
+           OR r.student_id_no LIKE ?
+           OR r.purpose LIKE ?
+           OR r.status LIKE ?
+        ORDER BY r.id DESC"
+    );
+    $requestStmt->bind_param(
+        'ssss',
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern
+    );
+    $requestStmt->execute();
+    $medCertRequests = $requestStmt->get_result();
 }
-
-// Load Students List
-$studentOptions = $conn->query('SELECT student_id_no, fullname, course_year FROM students ORDER BY fullname ASC');
-
-// Load Examination Records
-$sql = "
-    SELECT hd.*, s.fullname, s.course_year
-    FROM health_documentation AS hd
-    LEFT JOIN students AS s ON s.student_id_no = hd.student_id_no
-";
-$params = [];
-$types = '';
-
-if ($search !== '') {
-    $sql .= "
-        WHERE hd.student_id_no LIKE ?
-           OR s.fullname LIKE ?
-           OR hd.examination_date LIKE ?
-           OR hd.findings LIKE ?
-           OR hd.remarks LIKE ?
-           OR hd.recorded_by LIKE ?
-    ";
-    $term = '%' . $search . '%';
-    $params = [$term, $term, $term, $term, $term, $term];
-    $types = 'ssssss';
-}
-
-$sql .= ' ORDER BY hd.examination_date DESC, hd.id DESC';
-$stmt = $conn->prepare($sql);
-if ($types !== '') {
-    $stmt->bind_param($types, ...$params);
-}
-$stmt->execute();
-$documents = $stmt->get_result();
-
-$totalResult = $conn->query('SELECT COUNT(*) AS total FROM health_documentation');
-$totalDocuments = (int)($totalResult->fetch_assoc()['total'] ?? 0);
-
-// Load Medical Certificate Requests
-$medCertRequests = $conn->query(
-    "SELECT r.*, s.fullname, s.course_year 
-     FROM med_cert_requests r 
-     LEFT JOIN students s ON s.student_id_no = r.student_id_no 
-     ORDER BY r.id DESC"
-);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -327,15 +426,7 @@ $medCertRequests = $conn->query(
     <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
     <link rel="stylesheet" href="../../css/staff-dashboard.css?v=20261115-staff-brand-alignment">
     <link rel="stylesheet" href="../../css/health-documentation.css?v=20261114-icons">
-    <style>
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
-        .status-Pending { background: #fef08a; color: #854d0e; }
-        .status-Approved { background: #bfdbfe; color: #1e40af; }
-        .status-Completed { background: #bbf7d0; color: #166534; }
-        .status-Rejected { background: #fecaca; color: #991b1b; }
-        .med-cert-form { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; margin-top: 8px; }
-        .med-cert-form input, .med-cert-form textarea { width: 100%; margin-bottom: 8px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; }
-    </style>
+
 </head>
 <body class="staff-dashboard-body">
 
@@ -351,14 +442,11 @@ $medCertRequests = $conn->query(
     <nav class="staff-nav">
         <p class="staff-nav-label">MAIN MENU</p>
         <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
-        <a href="student_records.php"><span><img class="ui-icon" src="../../image/icon-profile.svg" alt="" aria-hidden="true"></span> Student Records</a>
         <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
         <a href="health_documentation.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
-        <a href="clinic_visit_records.php"><span><img class="ui-icon" src="../../image/icon-clock.svg" alt="" aria-hidden="true"></span> Clinic Visit Records</a>
+        <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
 
-        <p class="staff-nav-label">INVENTORY &amp; REPORTS</p>
-        <a href="equipment_inventory.php"><span><img class="ui-icon" src="../../image/icon-calendar.svg" alt="" aria-hidden="true"></span> Equipment Inventory</a>
-        <a href="medicine_inventory.php"><span><img class="ui-icon" src="../../image/icon-capsule.svg" alt="" aria-hidden="true"></span> Medicine Inventory</a>
+        <p class="staff-nav-label">REPORTS</p>
         <a href="clinic_reports.php"><span><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"></span> Clinic Reports</a>
     </nav>
 
@@ -373,8 +461,9 @@ $medCertRequests = $conn->query(
             <p class="staff-eyebrow">CLINIC MANAGEMENT</p>
             <h1>Health Documentation</h1>
             <p class="staff-header-subtitle">
-                Record physical exams and approve student Medical Certificate requests.
+                Review certificate requests, complete physical exams, and generate QR-verified certificates.
             </p>
+            <a class="hd-button hd-button-primary" href="#walk-in-certificate">Add Med Cert</a>
         </div>
 
         <div class="staff-user">
@@ -399,8 +488,20 @@ $medCertRequests = $conn->query(
             <div class="hd-panel-heading">
                 <div>
                     <h2><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"> Student Medical Certificate Requests</h2>
-                    <p>Manage student requests, approve clinic visits, and issue QR-verified certificates.</p>
+                    <p>Review student-submitted health information, complete the physical examination during the clinic visit, and approve printable QR-verified certificates.</p>
                 </div>
+                <form method="GET" action="health_documentation.php" class="hd-search">
+                    <input
+                        type="search"
+                        name="search"
+                        value="<?= e($searchTerm) ?>"
+                        placeholder="Search name, ID, purpose, or status"
+                        aria-label="Search medical certificate requests">
+                    <button type="submit" class="hd-button hd-button-primary">Search</button>
+                    <?php if ($searchTerm !== ''): ?>
+                        <a class="hd-button hd-button-light" href="health_documentation.php">Clear</a>
+                    <?php endif; ?>
+                </form>
             </div>
 
             <div class="hd-table-wrap">
@@ -419,8 +520,22 @@ $medCertRequests = $conn->query(
                             <?php while ($r = $medCertRequests->fetch_assoc()): ?>
                                 <tr>
                                     <td>
-                                        <strong><?= e($r['fullname'] ?: 'Student') ?></strong><br>
-                                        <small><?= e($r['student_id_no']) ?> | <?= e($r['course_year'] ?: 'N/A') ?></small>
+                                        <strong><?= e($r['request_student_name'] ?: 'Student') ?></strong><br>
+                                        <small><?= e($r['student_id_no']) ?> | <?= e($r['request_course_year'] ?: 'N/A') ?></small>
+                                        <details class="hd-request-details" open>
+                                            <summary>Student-submitted information (click to collapse)</summary>
+                                            <dl>
+                                                <dt>Age / gender</dt><dd><?= e($r['age'] ?: 'Not provided') ?> / <?= e($r['gender'] ?: 'Not provided') ?></dd>
+                                                <dt>Contact</dt><dd><?= e($r['contact'] ?: 'Not provided') ?></dd>
+                                                <dt>Email</dt><dd><?= e($r['email'] ?: 'Not provided') ?></dd>
+                                                <dt>Allergies</dt><dd><?= nl2br(e($r['allergies'] ?: 'Not provided')) ?></dd>
+                                                <dt>Current medications</dt><dd><?= nl2br(e($r['current_medications'] ?: 'Not provided')) ?></dd>
+                                                <dt>Medical history</dt><dd><?= nl2br(e($r['medical_history'] ?: 'Not provided')) ?></dd>
+                                                <dt>Menstrual history</dt><dd><?= e($r['menstrual_history'] ?: 'Not provided') ?></dd>
+                                                <dt>Alcohol / tobacco</dt><dd><?= e($r['alcohol_use'] ?: 'Not provided') ?> / <?= e($r['tobacco_use'] ?: 'Not provided') ?></dd>
+                                                <dt>Family history</dt><dd>TB: <?= e($r['family_history_tuberculosis'] ?: 'Not provided') ?>; high blood pressure: <?= e($r['family_history_hypertension'] ?: 'Not provided') ?>; diabetes: <?= e($r['family_history_diabetes'] ?: 'Not provided') ?>; heart disease: <?= e($r['family_history_heart_disease'] ?: 'Not provided') ?>; other: <?= nl2br(e($r['family_history_other'] ?: 'Not provided')) ?></dd>
+                                            </dl>
+                                        </details>
                                     </td>
                                     <td><?= e($r['purpose']) ?></td>
                                     <td><?= e(date('M d, Y', strtotime($r['created_at']))) ?></td>
@@ -428,44 +543,49 @@ $medCertRequests = $conn->query(
                                         <span class="status-badge status-<?= e($r['status']) ?>"><?= e($r['status']) ?></span>
                                     </td>
                                     <td>
-                                        <?php if ($r['status'] === 'Pending'): ?>
-                                            <form method="POST" action="health_documentation.php" style="display:inline;">
+                                        <?php if (
+                                            $r['status'] === 'Pending' ||
+                                            ($r['status'] === 'Approved' && empty($r['qr_code_hash']))
+                                        ): ?>
+                                            <form method="POST" action="health_documentation.php" class="hd-approval-form">
                                                 <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                                                 <input type="hidden" name="action" value="approve_request">
                                                 <input type="hidden" name="req_id" value="<?= (int)$r['id'] ?>">
-                                                <button type="submit" class="hd-button hd-button-primary" style="padding:4px 10px; font-size:12px;">Approve Visit</button>
+                                                <strong>Complete physical examination</strong>
+                                                <div class="hd-approval-grid">
+                                                    <label>Height (cm)<input type="number" name="height_cm" min="30" max="250" step="0.01"></label>
+                                                    <label>Weight (kg)<input type="number" name="weight_kg" min="1" max="500" step="0.01"></label>
+                                                    <label>Temperature (°C)<input type="number" name="temperature" min="25" max="45" step="0.1"></label>
+                                                    <label>Blood pressure<input type="text" name="blood_pressure" maxlength="20" placeholder="120/80"></label>
+                                                    <label class="hd-approval-wide">Physical examination findings<textarea name="physical_findings" rows="3" maxlength="5000" required></textarea></label>
+                                                    <label class="hd-approval-wide">Staff assessment / diagnosis<textarea name="diagnosis" rows="2" maxlength="3000"></textarea></label>
+                                                    <label class="hd-approval-wide">Recommendations<textarea name="recommendation" rows="2" maxlength="3000"></textarea></label>
+                                                </div>
+                                                <button type="submit" class="hd-button hd-button-primary">Save physical exam &amp; approve certificate</button>
                                             </form>
-
-                                            <form method="POST" action="health_documentation.php" style="display:inline;" onsubmit="return confirm('Reject this request?');">
+                                            <?php if ($r['status'] === 'Pending'): ?>
+                                            <form method="POST" action="health_documentation.php" class="hd-request-reject" onsubmit="return confirm('Reject this request?');">
                                                 <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
                                                 <input type="hidden" name="action" value="reject_request">
                                                 <input type="hidden" name="req_id" value="<?= (int)$r['id'] ?>">
-                                                <button type="submit" class="hd-delete" style="padding:4px 10px; font-size:12px;">Reject</button>
+                                                <button type="submit" class="hd-delete">Reject request</button>
                                             </form>
+                                            <?php endif; ?>
 
-                                        <?php elseif ($r['status'] === 'Approved'): ?>
-                                            <span style="color:#1e40af; font-size:12px; display:block; margin-bottom:6px;">Student is advised to visit clinic for vital signs.</span>
-                                            
-                                            <!-- FORM FOR STAFF TO ISSUE FINAL MED CERT -->
-                                            <form method="POST" action="health_documentation.php" class="med-cert-form">
-                                                <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
-                                                <input type="hidden" name="action" value="generate_cert">
-                                                <input type="hidden" name="req_id" value="<?= (int)$r['id'] ?>">
-                                                
-                                                <strong style="font-size:12px; display:block; margin-bottom:4px;">Issue Certificate:</strong>
-                                                <input type="text" name="diagnosis" placeholder="Diagnosis / Findings (Required)" required>
-                                                <textarea name="recommendation" rows="2" placeholder="Recommendation / Remarks (Required)" required></textarea>
-                                                
-                                                <button type="submit" class="hd-button hd-button-primary" style="padding:6px 12px; font-size:12px; width:100%;">
-                                                    Issue Med Cert + QR Code
-                                                </button>
-                                            </form>
-
+                                        <?php elseif (in_array($r['status'], ['Approved', 'Completed'], true) && !empty($r['qr_code_hash'])): ?>
+                                            <div class="hd-certificate-issued">
+                                                <strong>Certificate approved</strong><br>
+                                                Code: <code><?= e($r['qr_code_hash']) ?></code><br>
+                                                Issued: <?= e($r['issued_date'] ? date('M d, Y', strtotime($r['issued_date'])) : 'Not recorded') ?>
+                                                <a class="hd-button hd-button-light" href="../print_medical_certificate_request.php?id=<?= (int)$r['id'] ?>">View / print certificate</a>
+                                                <a class="hd-button hd-button-light" href="scan_medical_certificate.php">Scan to verify</a>
+                                            </div>
                                         <?php elseif ($r['status'] === 'Completed'): ?>
                                             <div style="font-size:12px;">
                                                 <strong style="color:#166534;">Verified Certificate Issued</strong><br>
                                                 Code: <code><?= e($r['qr_code_hash']) ?></code><br>
-                                                Issued: <?= e(date('M d, Y', strtotime($r['issued_date']))) ?>
+                                                Issued: <?= e($r['issued_date'] ? date('M d, Y', strtotime($r['issued_date'])) : 'Not recorded') ?>
+                                                <a class="hd-button hd-button-light" href="../print_medical_certificate_request.php?id=<?= (int)$r['id'] ?>">View / print certificate</a>
                                             </div>
                                         <?php else: ?>
                                             <span style="color:#dc2626; font-size:12px;">Request Rejected</span>
@@ -483,205 +603,172 @@ $medCertRequests = $conn->query(
             </div>
         </section>
 
-        <!-- SUMMARY COUNTER -->
-        <div class="hd-summary">
-            <div class="hd-summary-icon"><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></div>
-            <div>
-                <p>Total Examination Records</p>
-                <h2><?= number_format($totalDocuments) ?></h2>
-            </div>
-        </div>
-
-        <!-- SECTION 2: ADD / EDIT PHYSICAL EXAMINATIONS -->
-        <section class="hd-panel" id="documentation-form">
+        <section class="hd-panel" id="walk-in-certificate">
             <div class="hd-panel-heading">
                 <div>
-                    <h2>
-                        <?= $editingDocument
-                            ? 'Edit Examination Record'
-                            : 'Add Physical Examination' ?>
-                    </h2>
-                    <p>Enter the student's examination measurements and observations.</p>
+                    <h2>Walk-in Medical Certificate</h2>
+                    <p>For students who do not use the system. Enter their personal details and interview answers, complete the physical examination, then generate the certificate with QR verification.</p>
                 </div>
-
-                <?php if ($editingDocument): ?>
-                    <a href="health_documentation.php" class="hd-button hd-button-light">Cancel Edit</a>
-                <?php endif; ?>
             </div>
 
-            <?php if ($studentOptions->num_rows === 0): ?>
-                <div class="hd-form-notice">
-                    No student records are available. Add a student in Student Records first.
-                </div>
-            <?php else: ?>
-                <form method="POST" action="health_documentation.php" class="hd-form">
-                    <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="save">
-                    <input type="hidden" name="id" value="<?= (int)($editingDocument['id'] ?? 0) ?>">
+            <form method="POST" action="health_documentation.php" class="hd-form">
+                <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                <input type="hidden" name="action" value="create_walkin_certificate">
 
-                    <div class="hd-form-grid">
-                        <div class="hd-field hd-field-wide">
-                            <label for="student_id_no">Student <span>*</span></label>
-                            <select name="student_id_no" id="student_id_no" required>
-                                <option value="">Select a student</option>
-                                <?php
-                                $studentOptions->data_seek(0);
-                                while ($student = $studentOptions->fetch_assoc()):
-                                ?>
-                                    <option
-                                        value="<?= e($student['student_id_no']) ?>"
-                                        <?= ($editingDocument['student_id_no'] ?? '') === $student['student_id_no'] ? 'selected' : '' ?>>
-                                        <?= e($student['student_id_no']) ?> — <?= e($student['fullname']) ?>
-                                        <?= !empty($student['course_year']) ? ' (' . e($student['course_year']) . ')' : '' ?>
-                                    </option>
-                                <?php endwhile; ?>
+                <div class="hd-form-grid">
+                    <div class="hd-field hd-field-wide"><strong>Student personal information</strong></div>
+                    <div class="hd-field">
+                        <label for="walkin_student_name">Full name <span>*</span></label>
+                        <input type="text" name="student_name" id="walkin_student_name" maxlength="100" required>
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_student_id_no">Student ID <span>*</span></label>
+                        <input type="text" name="student_id_no" id="walkin_student_id_no" maxlength="50" required>
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_course_year">Course / year</label>
+                        <input type="text" name="course_year" id="walkin_course_year" maxlength="50">
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_age">Age</label>
+                        <input type="number" name="age" id="walkin_age" min="1" max="120">
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_gender">Gender</label>
+                        <select name="gender" id="walkin_gender">
+                            <option value="">Not provided</option>
+                            <option value="Female">Female</option>
+                            <option value="Male">Male</option>
+                            <option value="Non-binary">Non-binary</option>
+                            <option value="Other">Other</option>
+                            <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_contact">Contact number</label>
+                        <input type="text" name="contact" id="walkin_contact" maxlength="50">
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_email">Email address</label>
+                        <input type="email" name="email" id="walkin_email" maxlength="100">
+                    </div>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_purpose">Purpose of certificate <span>*</span></label>
+                        <input type="text" name="purpose" id="walkin_purpose" maxlength="255" required>
+                    </div>
+
+                    <div class="hd-field hd-field-wide"><strong>Student interview</strong></div>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_allergies">Allergies</label>
+                        <textarea name="allergies" id="walkin_allergies" rows="3" maxlength="2000"></textarea>
+                    </div>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_current_medications">Current medications</label>
+                        <textarea name="current_medications" id="walkin_current_medications" rows="3" maxlength="2000"></textarea>
+                    </div>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_medical_history">Past or current medical history</label>
+                        <textarea name="medical_history" id="walkin_medical_history" rows="3" maxlength="3000"></textarea>
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_menstrual_history">Menstrual history</label>
+                        <select name="menstrual_history" id="walkin_menstrual_history">
+                            <option value="Not asked">Not asked</option>
+                            <option value="Not applicable">Not applicable</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Irregular">Irregular</option>
+                            <option value="Prefer not to answer">Prefer not to answer</option>
+                        </select>
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_alcohol_use">Alcohol use</label>
+                        <select name="alcohol_use" id="walkin_alcohol_use">
+                            <option value="Not asked">Not asked</option>
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                            <option value="Prefer not to answer">Prefer not to answer</option>
+                        </select>
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_tobacco_use">Tobacco use</label>
+                        <select name="tobacco_use" id="walkin_tobacco_use">
+                            <option value="Not asked">Not asked</option>
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                            <option value="Prefer not to answer">Prefer not to answer</option>
+                        </select>
+                    </div>
+                    <?php
+                    $walkInFamilyHistoryFields = [
+                        'family_history_tuberculosis' => 'Family history of tuberculosis',
+                        'family_history_hypertension' => 'Family history of high blood pressure',
+                        'family_history_diabetes' => 'Family history of diabetes',
+                        'family_history_heart_disease' => 'Family history of heart disease'
+                    ];
+                    foreach ($walkInFamilyHistoryFields as $fieldName => $fieldLabel):
+                    ?>
+                        <div class="hd-field">
+                            <label for="walkin_<?= e($fieldName) ?>"><?= e($fieldLabel) ?></label>
+                            <select name="<?= e($fieldName) ?>" id="walkin_<?= e($fieldName) ?>">
+                                <option value="Unknown">Unknown</option>
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                                <option value="Prefer not to answer">Prefer not to answer</option>
                             </select>
                         </div>
-
-                        <div class="hd-field">
-                            <label for="examination_date">Examination Date <span>*</span></label>
-                            <input type="date" name="examination_date" id="examination_date" required max="<?= date('Y-m-d') ?>" value="<?= e($editingDocument['examination_date'] ?? date('Y-m-d')) ?>">
-                        </div>
-
-                        <div class="hd-field">
-                            <label for="height_cm">Height (cm)</label>
-                            <input type="number" name="height_cm" id="height_cm" min="30" max="250" step="0.01" placeholder="e.g. 165" value="<?= e($editingDocument['height_cm'] ?? '') ?>">
-                        </div>
-
-                        <div class="hd-field">
-                            <label for="weight_kg">Weight (kg)</label>
-                            <input type="number" name="weight_kg" id="weight_kg" min="1" max="500" step="0.01" placeholder="e.g. 55.5" value="<?= e($editingDocument['weight_kg'] ?? '') ?>">
-                        </div>
-
-                        <div class="hd-field">
-                            <label for="temperature">Temperature (°C)</label>
-                            <input type="number" name="temperature" id="temperature" min="25" max="45" step="0.1" placeholder="e.g. 36.8" value="<?= e($editingDocument['temperature'] ?? '') ?>">
-                        </div>
-
-                        <div class="hd-field">
-                            <label for="blood_pressure">Blood Pressure</label>
-                            <input type="text" name="blood_pressure" id="blood_pressure" maxlength="20" placeholder="e.g. 120/80" value="<?= e($editingDocument['blood_pressure'] ?? '') ?>">
-                        </div>
-
-                        <div class="hd-field hd-field-wide">
-                            <label for="findings">Findings / Observations</label>
-                            <textarea name="findings" id="findings" rows="3" placeholder="Record factual examination findings..."><?= e($editingDocument['findings'] ?? '') ?></textarea>
-                        </div>
-
-                        <div class="hd-field hd-field-wide">
-                            <label for="remarks">Remarks / Follow-up Notes</label>
-                            <textarea name="remarks" id="remarks" rows="3" placeholder="Enter additional remarks or follow-up instructions..."><?= e($editingDocument['remarks'] ?? '') ?></textarea>
-                        </div>
+                    <?php endforeach; ?>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_family_history_other">Other family health history</label>
+                        <textarea name="family_history_other" id="walkin_family_history_other" rows="3" maxlength="2000"></textarea>
                     </div>
 
-                    <p class="hd-privacy-note">
-                        Record factual observations. Medical diagnosis and treatment decisions should be made by qualified healthcare professionals.
-                    </p>
-
-                    <div class="hd-form-actions">
-                        <button type="submit" class="hd-button hd-button-primary">
-                            <?= $editingDocument ? 'Save Changes' : '+ Save Examination Record' ?>
-                        </button>
-
-                        <?php if (!$editingDocument): ?>
-                            <button type="reset" class="hd-button hd-button-light">Clear Form</button>
-                        <?php endif; ?>
+                    <div class="hd-field hd-field-wide"><strong>Physical examination and certificate</strong></div>
+                    <div class="hd-field">
+                        <label for="walkin_height_cm">Height (cm)</label>
+                        <input type="number" name="height_cm" id="walkin_height_cm" min="30" max="250" step="0.01">
                     </div>
-                </form>
-            <?php endif; ?>
-        </section>
-
-        <!-- SECTION 3: PHYSICAL EXAMINATION RECORDS LIST -->
-        <section class="hd-panel">
-            <div class="hd-panel-heading hd-list-heading">
-                <div>
-                    <h2>Physical Examination Records</h2>
-                    <p>Search, review, print, or manage saved examination records.</p>
+                    <div class="hd-field">
+                        <label for="walkin_weight_kg">Weight (kg)</label>
+                        <input type="number" name="weight_kg" id="walkin_weight_kg" min="1" max="500" step="0.01">
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_temperature">Temperature (°C)</label>
+                        <input type="number" name="temperature" id="walkin_temperature" min="25" max="45" step="0.1">
+                    </div>
+                    <div class="hd-field">
+                        <label for="walkin_blood_pressure">Blood pressure</label>
+                        <input type="text" name="blood_pressure" id="walkin_blood_pressure" maxlength="20" placeholder="120/80">
+                    </div>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_physical_findings">Physical examination findings <span>*</span></label>
+                        <textarea name="physical_findings" id="walkin_physical_findings" rows="4" maxlength="5000" required></textarea>
+                    </div>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_diagnosis">Staff assessment / diagnosis</label>
+                        <textarea name="diagnosis" id="walkin_diagnosis" rows="3" maxlength="3000"></textarea>
+                    </div>
+                    <div class="hd-field hd-field-wide">
+                        <label for="walkin_recommendation">Recommendations / remarks</label>
+                        <textarea name="recommendation" id="walkin_recommendation" rows="3" maxlength="3000"></textarea>
+                    </div>
                 </div>
 
-                <form method="GET" action="health_documentation.php" class="hd-search">
-                    <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search student, ID, findings..." aria-label="Search examination records">
-                    <button type="submit" class="hd-button hd-button-primary">Search</button>
-
-                    <?php if ($search !== ''): ?>
-                        <a href="health_documentation.php" class="hd-button hd-button-light">Clear</a>
-                    <?php endif; ?>
-
-                    <button type="button" class="hd-button hd-button-light" onclick="window.print()">Print</button>
-                </form>
-            </div>
-
-            <div class="hd-table-wrap">
-                <table class="hd-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Student</th>
-                            <th>Height</th>
-                            <th>Weight</th>
-                            <th>Temperature</th>
-                            <th>Blood Pressure</th>
-                            <th>Findings</th>
-                            <th>Remarks</th>
-                            <th>Recorded By</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php if ($documents->num_rows > 0): ?>
-                        <?php while ($document = $documents->fetch_assoc()): ?>
-                            <tr>
-                                <td><?= e(date('M d, Y', strtotime($document['examination_date']))) ?></td>
-                                <td>
-                                    <strong><?= e($document['fullname'] ?? 'Student not found') ?></strong>
-                                    <small class="hd-student-number"><?= e($document['student_id_no']) ?></small>
-                                </td>
-                                <td><?= $document['height_cm'] !== null ? e($document['height_cm']) . ' cm' : '—' ?></td>
-                                <td><?= $document['weight_kg'] !== null ? e($document['weight_kg']) . ' kg' : '—' ?></td>
-                                <td><?= $document['temperature'] !== null ? e($document['temperature']) . ' °C' : '—' ?></td>
-                                <td><?= e($document['blood_pressure'] ?: '—') ?></td>
-                                <td class="hd-long-text"><?= e($document['findings'] ?: '—') ?></td>
-                                <td class="hd-long-text"><?= e($document['remarks'] ?: '—') ?></td>
-                                <td><?= e($document['recorded_by'] ?: '—') ?></td>
-                                <td>
-                                    <div class="hd-actions">
-                                        <a class="hd-edit" href="health_documentation.php?edit=<?= (int)$document['id'] ?>#documentation-form">Edit</a>
-                                        <form method="POST" action="health_documentation.php" onsubmit="return confirm('Delete this examination record? This cannot be undone.');">
-                                            <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?= (int)$document['id'] ?>">
-                                            <button type="submit" class="hd-delete">Delete</button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="10" class="hd-empty">
-                                <strong>No examination records found.</strong>
-                                <p>Add an examination record or try a different search.</p>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="hd-table-footer">
-                Showing <?= number_format($documents->num_rows) ?> record(s)
-                <?php if ($search !== ''): ?>
-                    matching <strong><?= e($search) ?></strong>
-                <?php endif; ?>
-            </div>
+                <label class="hd-walkin-confirmation">
+                    <input type="checkbox" name="confirmed_with_student" value="yes" required>
+                    <span>I confirmed the personal and interview information with the walk-in student.</span>
+                </label>
+                <p class="hd-privacy-note">Interview answers are available to authorized clinic staff and are not printed on the certificate. The certificate is generated immediately after saving.</p>
+                <div class="hd-form-actions">
+                    <button type="submit" class="hd-button hd-button-primary">Save &amp; generate walk-in certificate</button>
+                    <button type="reset" class="hd-button hd-button-light">Clear form</button>
+                </div>
+            </form>
         </section>
+
     </section>
 
 </main>
 
 </body>
 </html>
-<?php
-$stmt->close();
-$conn->close();
-?>
+<?php $conn->close(); ?>

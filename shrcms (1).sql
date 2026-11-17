@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 5.2.3
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Oct 31, 2026 at 04:27 AM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Host: localhost:3306
+-- Generation Time: Nov 17, 2026 at 09:39 AM
+-- Server version: 8.4.3
+-- PHP Version: 8.4.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -28,13 +28,13 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `admin` (
-  `id` int(11) NOT NULL,
-  `admin_id_no` varchar(20) NOT NULL,
-  `username` varchar(100) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `student_id_no` varchar(15) DEFAULT NULL
+  `id` int NOT NULL,
+  `admin_id_no` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `username` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `student_id_no` varchar(15) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -42,7 +42,7 @@ CREATE TABLE `admin` (
 --
 
 INSERT INTO `admin` (`id`, `admin_id_no`, `username`, `email`, `password`, `created_at`, `student_id_no`) VALUES
-(1, 'ADMIN-0001', 'admin', 'admin@shrcms.com', 'admin123', '2026-10-13 05:56:59', NULL);
+(1, 'ADMIN-0001', 'admin', 'admin@shrcms.com', '$2y$12$rB1pN5vVSIgQYRw6CY9Fb.35cab2d/uvIDnDFcBWP.hINL6IYkdpm', '2026-10-13 05:56:59', NULL);
 
 -- --------------------------------------------------------
 
@@ -51,13 +51,13 @@ INSERT INTO `admin` (`id`, `admin_id_no`, `username`, `email`, `password`, `crea
 --
 
 CREATE TABLE `consultations` (
-  `id` int(11) NOT NULL,
-  `student_id` varchar(50) NOT NULL,
+  `id` int NOT NULL,
+  `student_id` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `consultation_date` date NOT NULL,
-  `reason` varchar(100) NOT NULL,
-  `remarks` text DEFAULT NULL,
-  `staff_name` varchar(100) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `reason` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `staff_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -80,18 +80,18 @@ INSERT INTO `consultations` (`id`, `student_id`, `consultation_date`, `reason`, 
 --
 
 CREATE TABLE `equipment_inventory` (
-  `id` int(11) NOT NULL,
-  `equipment_name` varchar(150) NOT NULL,
-  `category` varchar(100) DEFAULT NULL,
-  `quantity` int(11) NOT NULL DEFAULT 1,
-  `equipment_condition` enum('Good','Needs Maintenance','Under Repair','Damaged') NOT NULL DEFAULT 'Good',
+  `id` int NOT NULL,
+  `equipment_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `category` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `quantity` int NOT NULL DEFAULT '1',
+  `equipment_condition` enum('Good','Needs Maintenance','Under Repair','Damaged') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Good',
   `date_acquired` date DEFAULT NULL,
   `last_maintenance` date DEFAULT NULL,
   `next_maintenance` date DEFAULT NULL,
-  `location` varchar(150) DEFAULT NULL,
-  `remarks` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `location` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -108,17 +108,17 @@ INSERT INTO `equipment_inventory` (`id`, `equipment_name`, `category`, `quantity
 --
 
 CREATE TABLE `health_documentation` (
-  `id` int(11) NOT NULL,
-  `student_id_no` varchar(50) NOT NULL,
+  `id` int NOT NULL,
+  `student_id_no` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `examination_date` date NOT NULL,
   `height_cm` decimal(5,2) DEFAULT NULL,
   `weight_kg` decimal(5,2) DEFAULT NULL,
   `temperature` decimal(4,1) DEFAULT NULL,
-  `blood_pressure` varchar(20) DEFAULT NULL,
-  `findings` text DEFAULT NULL,
-  `remarks` text DEFAULT NULL,
-  `recorded_by` varchar(100) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `blood_pressure` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `findings` text COLLATE utf8mb4_general_ci,
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `recorded_by` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -126,7 +126,73 @@ CREATE TABLE `health_documentation` (
 --
 
 INSERT INTO `health_documentation` (`id`, `student_id_no`, `examination_date`, `height_cm`, `weight_kg`, `temperature`, `blood_pressure`, `findings`, `remarks`, `recorded_by`, `created_at`) VALUES
-(2, 'SCC-22-00016716', '2026-10-31', 150.00, 55.00, 36.5, '80', 'fine', 'pagkulkog', 'dutctmilk', '2026-10-31 02:15:01');
+(2, 'SCC-22-00016716', '2026-10-31', 150.00, 55.00, 36.5, '80', 'fine', 'pagkulkog', 'dutctmilk', '2026-10-31 02:15:01'),
+(3, 'SCC-22-00022156', '2026-11-17', 164.98, 55.00, 36.5, '120/80', 'NORMAL', '', 'olivia', '2026-11-17 08:30:16');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `initial_password_changes`
+--
+
+CREATE TABLE `initial_password_changes` (
+  `account_type` enum('student','staff') COLLATE utf8mb4_general_ci NOT NULL,
+  `account_id` int NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `medical_certificates`
+--
+
+CREATE TABLE `medical_certificates` (
+  `id` int NOT NULL,
+  `examination_id` int NOT NULL,
+  `student_id` int NOT NULL,
+  `student_id_no` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `certificate_code` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
+  `purpose` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `medical_findings` text COLLATE utf8mb4_general_ci NOT NULL,
+  `recommendations` text COLLATE utf8mb4_general_ci,
+  `issued_by` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `issued_date` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `medical_examinations`
+--
+
+CREATE TABLE `medical_examinations` (
+  `id` int NOT NULL,
+  `student_id` int NOT NULL,
+  `student_id_no` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `examination_date` date NOT NULL,
+  `height_cm` decimal(5,2) DEFAULT NULL,
+  `weight_kg` decimal(5,2) DEFAULT NULL,
+  `temperature` decimal(4,1) DEFAULT NULL,
+  `blood_pressure` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `allergies` text COLLATE utf8mb4_general_ci,
+  `current_medications` text COLLATE utf8mb4_general_ci,
+  `medical_history` text COLLATE utf8mb4_general_ci,
+  `menstrual_history` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `alcohol_use` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `tobacco_use` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_tuberculosis` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_hypertension` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_diabetes` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_heart_disease` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_other` text COLLATE utf8mb4_general_ci,
+  `physical_examination` text COLLATE utf8mb4_general_ci NOT NULL,
+  `assessment` text COLLATE utf8mb4_general_ci,
+  `recommendations` text COLLATE utf8mb4_general_ci,
+  `recorded_by` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -135,18 +201,18 @@ INSERT INTO `health_documentation` (`id`, `student_id_no`, `examination_date`, `
 --
 
 CREATE TABLE `medicine_inventory` (
-  `id` int(11) NOT NULL,
-  `medicine_name` varchar(150) NOT NULL,
-  `category` varchar(100) DEFAULT NULL,
-  `quantity` int(11) NOT NULL DEFAULT 0,
-  `unit` varchar(50) NOT NULL DEFAULT 'pcs',
-  `reorder_level` int(11) NOT NULL DEFAULT 10,
+  `id` int NOT NULL,
+  `medicine_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `category` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `quantity` int NOT NULL DEFAULT '0',
+  `unit` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pcs',
+  `reorder_level` int NOT NULL DEFAULT '10',
   `expiration_date` date DEFAULT NULL,
-  `supplier` varchar(150) DEFAULT NULL,
-  `storage_location` varchar(150) DEFAULT NULL,
-  `remarks` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `supplier` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `storage_location` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -164,25 +230,50 @@ INSERT INTO `medicine_inventory` (`id`, `medicine_name`, `category`, `quantity`,
 --
 
 CREATE TABLE `med_cert_requests` (
-  `id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `student_id_no` varchar(50) NOT NULL,
-  `purpose` text NOT NULL,
-  `status` enum('Pending','Approved','Completed','Rejected') DEFAULT 'Pending',
-  `diagnosis` text DEFAULT NULL,
-  `recommendation` text DEFAULT NULL,
-  `qr_code_hash` varchar(100) DEFAULT NULL,
-  `approved_by` varchar(100) DEFAULT NULL,
+  `id` int NOT NULL,
+  `student_id` int DEFAULT NULL,
+  `student_id_no` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `purpose` text COLLATE utf8mb4_general_ci NOT NULL,
+  `status` enum('Pending','Approved','Completed','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `diagnosis` text COLLATE utf8mb4_general_ci,
+  `recommendation` text COLLATE utf8mb4_general_ci,
+  `qr_code_hash` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `approved_by` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `issued_date` date DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `student_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `course_year` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `age` smallint UNSIGNED DEFAULT NULL,
+  `gender` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `contact` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `allergies` text COLLATE utf8mb4_general_ci,
+  `current_medications` text COLLATE utf8mb4_general_ci,
+  `medical_history` text COLLATE utf8mb4_general_ci,
+  `menstrual_history` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `alcohol_use` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `tobacco_use` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_tuberculosis` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_hypertension` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_diabetes` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_heart_disease` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `family_history_other` text COLLATE utf8mb4_general_ci,
+  `height_cm` decimal(5,2) DEFAULT NULL,
+  `weight_kg` decimal(5,2) DEFAULT NULL,
+  `temperature` decimal(4,1) DEFAULT NULL,
+  `blood_pressure` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `physical_findings` text COLLATE utf8mb4_general_ci,
+  `examination_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `med_cert_requests`
 --
 
-INSERT INTO `med_cert_requests` (`id`, `student_id`, `student_id_no`, `purpose`, `status`, `diagnosis`, `recommendation`, `qr_code_hash`, `approved_by`, `issued_date`, `created_at`) VALUES
-(1, 5, 'SCC-22-00016716', 'sakit ako bilat', 'Completed', 'pagkulkog', 'augh augh', 'MC-AF34EFB7', 'dutctmilk', '2026-10-31', '2026-10-31 03:03:42');
+INSERT INTO `med_cert_requests` (`id`, `student_id`, `student_id_no`, `purpose`, `status`, `diagnosis`, `recommendation`, `qr_code_hash`, `approved_by`, `issued_date`, `created_at`, `student_name`, `course_year`, `age`, `gender`, `contact`, `email`, `allergies`, `current_medications`, `medical_history`, `menstrual_history`, `alcohol_use`, `tobacco_use`, `family_history_tuberculosis`, `family_history_hypertension`, `family_history_diabetes`, `family_history_heart_disease`, `family_history_other`, `height_cm`, `weight_kg`, `temperature`, `blood_pressure`, `physical_findings`, `examination_date`) VALUES
+(1, 5, 'SCC-22-00016716', 'sakit ako bilat', 'Completed', 'pagkulkog', 'augh augh', 'MC-AF34EFB7', 'dutctmilk', '2026-10-31', '2026-10-31 03:03:42', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 10, 'SCC-22-00022156', 'women basketball', 'Approved', '', '', 'MC-9103FD49A9D534F61058F53BC47776E2', 'olivia', '2026-11-17', '2026-11-17 08:28:04', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 45.00, 56.00, 35.0, '120/80', 'illegible', '2026-11-17'),
+(5, 10, 'SCC-22-00022156', 'SPORTS', 'Pending', NULL, NULL, NULL, NULL, NULL, '2026-11-17 09:00:35', 'Kisha Nicole Paran', 'BSIT 3RD YEAR', 21, 'Female', '09354629968', 'kishanicoleparan@gmail.com', 'NONE', 'NONE', 'NONE', 'Irregular', 'Yes', 'No', 'No', 'Yes', 'No', 'No', '', NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -191,13 +282,13 @@ INSERT INTO `med_cert_requests` (`id`, `student_id`, `student_id_no`, `purpose`,
 --
 
 CREATE TABLE `staff` (
-  `id` int(11) NOT NULL,
-  `staff_id_no` varchar(50) DEFAULT NULL,
-  `password` varchar(255) DEFAULT NULL,
-  `fullname` varchar(100) NOT NULL,
-  `role` varchar(50) NOT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `id` int NOT NULL,
+  `staff_id_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `password` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `fullname` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `role` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -205,9 +296,8 @@ CREATE TABLE `staff` (
 --
 
 INSERT INTO `staff` (`id`, `staff_id_no`, `password`, `fullname`, `role`, `email`, `created_at`) VALUES
-(1, 'STAFF-0001', NULL, 'olivia', 'Staff', 'jamesoliverbastismo35@gmail.com', '2026-10-13 05:19:31'),
+(1, 'STAFF-0001', '$2y$12$kyqDso.IQL.0z.ntrfS4mumDMm8yiK1GU2V/WrOLB6Mzr6YUZgIkS', 'olivia', 'Staff', 'jamesoliverbastismo35@gmail.com', '2026-10-13 05:19:31'),
 (2, 'STAFF-0002', NULL, 'James oliver Bastismo', 'Staff', 'jamesoliverbastismo188@gmail.com', '2026-10-13 05:47:41'),
-(3, 'STAFF-0003', NULL, 'Jingkie alipuyo', 'Staff', 'jingkiebahobilat@gmail.com', '2026-10-13 06:04:13'),
 (4, 'STAFF-0004', NULL, 'dutctmilk', 'Staff', 'dutchmilk@gmail.com', '2026-10-31 01:24:02');
 
 -- --------------------------------------------------------
@@ -217,17 +307,17 @@ INSERT INTO `staff` (`id`, `staff_id_no`, `password`, `fullname`, `role`, `email
 --
 
 CREATE TABLE `students` (
-  `id` int(11) NOT NULL,
-  `student_id_no` varchar(50) NOT NULL,
-  `fullname` varchar(100) NOT NULL,
-  `age` int(11) DEFAULT NULL,
-  `gender` varchar(20) DEFAULT NULL,
-  `course_year` varchar(50) DEFAULT NULL,
-  `contact` varchar(20) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `user_id` int(11) DEFAULT NULL,
-  `email` varchar(100) DEFAULT NULL,
-  `password` varchar(255) DEFAULT NULL
+  `id` int NOT NULL,
+  `student_id_no` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `fullname` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `age` int DEFAULT NULL,
+  `gender` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `course_year` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `contact` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `user_id` int DEFAULT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `password` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -235,7 +325,7 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`id`, `student_id_no`, `fullname`, `age`, `gender`, `course_year`, `contact`, `created_at`, `user_id`, `email`, `password`) VALUES
-(5, 'SCC-22-00016716', 'James oliver Bastismo', 20, 'Male', 'BSIT-3RD YR', '09817405586', '2026-10-31 02:10:36', 21, 'james@gmail.com', '$2y$10$qPmTGBopW4D3/8m3k7jLpu5x7dCsppDWwBBuryCqq93gA0JgrZeR.');
+(10, 'SCC-22-00022156', 'Kisha Nicole Paran', NULL, NULL, NULL, NULL, '2026-11-17 08:27:10', 27, NULL, '$2y$12$bZ2B.kp0jecyKpcftx2Wqel40HNbJ5LOUPH0jrKMBSEw6ahnEnlju');
 
 -- --------------------------------------------------------
 
@@ -244,15 +334,15 @@ INSERT INTO `students` (`id`, `student_id_no`, `fullname`, `age`, `gender`, `cou
 --
 
 CREATE TABLE `system_settings` (
-  `id` int(11) NOT NULL,
-  `system_name` varchar(150) NOT NULL DEFAULT 'SHRCMS',
-  `school_name` varchar(150) NOT NULL DEFAULT 'My School',
-  `primary_color` char(7) NOT NULL DEFAULT '#1454bd',
-  `sidebar_color` char(7) NOT NULL DEFAULT '#08285e',
-  `records_per_page` int(11) NOT NULL DEFAULT 10,
-  `date_format` varchar(20) NOT NULL DEFAULT 'M d, Y',
-  `confirm_delete` tinyint(1) NOT NULL DEFAULT 1,
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `id` int NOT NULL,
+  `system_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'SHRCMS',
+  `school_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'My School',
+  `primary_color` char(7) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '#1454bd',
+  `sidebar_color` char(7) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '#08285e',
+  `records_per_page` int NOT NULL DEFAULT '10',
+  `date_format` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'M d, Y',
+  `confirm_delete` tinyint(1) NOT NULL DEFAULT '1',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -260,7 +350,7 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`id`, `system_name`, `school_name`, `primary_color`, `sidebar_color`, `records_per_page`, `date_format`, `confirm_delete`, `updated_at`) VALUES
-(1, 'SHRCMS', 'My School', '#1454bd', '#08285e', 10, 'M d, Y', 1, '2026-10-17 08:39:24');
+(1, 'SHRCMS', 'My School', '#1462e1', '#08285e', 5, 'M d, Y', 1, '2026-11-17 07:14:08');
 
 -- --------------------------------------------------------
 
@@ -269,14 +359,14 @@ INSERT INTO `system_settings` (`id`, `system_name`, `school_name`, `primary_colo
 --
 
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `role` varchar(50) DEFAULT 'User',
-  `password` varchar(255) NOT NULL,
-  `status` varchar(20) DEFAULT 'Active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `student_id_no` varchar(50) DEFAULT NULL
+  `id` int NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `role` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'User',
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `status` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `student_id_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -286,14 +376,9 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `name`, `email`, `role`, `password`, `status`, `created_at`, `student_id_no`) VALUES
 (1, 'olivia', 'jamesoliverbastismo35@gmail.com', 'Staff', '$2y$10$YZvXPm3iwZ7MyIOx13rNq.hR5js9mWMKay0iyqbLNrkRP1IQ1wn4e', 'Active', '2026-10-13 05:19:31', NULL),
 (8, 'James oliver Bastismo', 'jamesoliverbastismo188@gmail.com', 'Staff', '$2y$10$nAhhP82RNiw4uR9khq7/neJbr6MnaQ0COqzUwtFViKNtHVMwhmZ5.', 'Active', '2026-10-13 05:47:41', NULL),
-(9, 'Jingkie alipuyo', 'jingkiebahobilat@gmail.com', 'Staff', '$2y$10$..p/v5PncB9LznolLvAPcOxefvQh9kN4EnqxDAz4MoWm3bfPLRWsi', 'Active', '2026-10-13 06:04:13', NULL),
 (10, 'shani', 'kishanicoleparan@gmail.com', 'Staff', '$2y$10$KTDVvtIU7G4LbzrHf6p85e.kXZtK0ZLzVOGmchA53oL3Pix6hi4uG', 'Active', '2026-10-17 03:41:13', NULL),
 (11, 'xian paran', 'xian@gmail.com', 'Student', '$2y$10$g1JoInHjHDlxj.4D.pOHMe41EVJtklcqWnOl73UqvW5zKj7uAVGKy', 'Active', '2026-10-17 08:54:42', NULL),
-(13, 'SCC-000-20221567', 'oliver@gmail.com', 'Student', '$2y$10$uyf3NKYwJvmvigW4XcGVHemscM8B2Z1fxe./8WWNbEw4WHvu7PhiK', 'Active', '2026-10-17 09:20:13', NULL),
-(14, 'mayshane paran', 'mayshane@gmail.com', 'Student', '$2y$10$07pqtJi6Yg9agwyOqoQ7n.M46pwAuJiSpYpGD98.yOmJL9/6pWKzG', 'Active', '2026-10-17 13:23:39', NULL),
-(15, 'james oliver bastismo', 'bastismo@gmail.com', 'student', '$2y$10$.uw455E7E19mCO2UaJiaheoUZ3XLTOnMdEfY1Jna07w3DuSWlABWq', 'Active', '2026-10-17 14:36:03', 'SCC-22-00022156'),
-(16, 'dutctmilk', 'dutchmilk@gmail.com', 'Staff', '$2y$10$i/eSEuoscm2hCXTW/JvAvOeHDiZpubThd/Ylsjj.C7YPqEe0460hS', 'Active', '2026-10-31 01:24:02', NULL),
-(21, 'James oliver Bastismo', 'james@gmail.com', 'Student', '$2y$10$qPmTGBopW4D3/8m3k7jLpu5x7dCsppDWwBBuryCqq93gA0JgrZeR.', 'Active', '2026-10-31 02:10:36', 'SCC-22-00016716');
+(27, 'Kisha Nicole Paran', NULL, 'Student', '$2y$12$bZ2B.kp0jecyKpcftx2Wqel40HNbJ5LOUPH0jrKMBSEw6ahnEnlju', 'Active', '2026-11-17 08:27:10', 'SCC-22-00022156');
 
 --
 -- Indexes for dumped tables
@@ -330,6 +415,28 @@ ALTER TABLE `health_documentation`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_health_student` (`student_id_no`),
   ADD KEY `idx_health_date` (`examination_date`);
+
+--
+-- Indexes for table `initial_password_changes`
+--
+ALTER TABLE `initial_password_changes`
+  ADD PRIMARY KEY (`account_type`,`account_id`);
+
+--
+-- Indexes for table `medical_certificates`
+--
+ALTER TABLE `medical_certificates`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_medical_certificates_code` (`certificate_code`),
+  ADD KEY `idx_medical_certificates_exam` (`examination_id`),
+  ADD KEY `idx_medical_certificates_student_date` (`student_id_no`,`issued_date`);
+
+--
+-- Indexes for table `medical_examinations`
+--
+ALTER TABLE `medical_examinations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_medical_examinations_student_date` (`student_id_no`,`examination_date`);
 
 --
 -- Indexes for table `medicine_inventory`
@@ -382,55 +489,67 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `admin`
 --
 ALTER TABLE `admin`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `consultations`
 --
 ALTER TABLE `consultations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `equipment_inventory`
 --
 ALTER TABLE `equipment_inventory`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `health_documentation`
 --
 ALTER TABLE `health_documentation`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `medical_certificates`
+--
+ALTER TABLE `medical_certificates`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `medical_examinations`
+--
+ALTER TABLE `medical_examinations`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `medicine_inventory`
 --
 ALTER TABLE `medicine_inventory`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `med_cert_requests`
 --
 ALTER TABLE `med_cert_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `staff`
 --
 ALTER TABLE `staff`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

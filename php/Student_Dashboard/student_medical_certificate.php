@@ -1,9 +1,13 @@
 <?php
 session_start();
 
+if (!empty($_SESSION['must_change_password'])) {
+    header('Location: ../change_initial_password.php');
+    exit();
+}
+
 if (
-    !isset($_SESSION['admin_logged_in']) ||
-    $_SESSION['admin_logged_in'] !== true ||
+    ($_SESSION['admin_logged_in'] ?? false) !== true ||
     ($_SESSION['user_role'] ?? '') !== 'Student'
 ) {
     header('Location: ../login.php');
@@ -18,18 +22,39 @@ function e($value): string
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
-$username = $_SESSION['admin_username'] ?? 'Student';
+function postedString(string $key): string
+{
+    $value = $_POST[$key] ?? '';
+    return is_string($value) ? trim($value) : '';
+}
+
+function redirectCertificateRequest(string $message, string $type = 'success'): void
+{
+    header(
+        'Location: student_medical_certificate.php?message=' .
+        urlencode($message) . '&type=' . urlencode($type)
+    );
+    exit();
+}
+
+if (empty($_SESSION['medical_certificate_csrf'])) {
+    $_SESSION['medical_certificate_csrf'] = bin2hex(random_bytes(32));
+}
+
+$csrfToken = $_SESSION['medical_certificate_csrf'];
 $userId = (int)($_SESSION['user_id'] ?? 0);
 $studentIdNo = trim((string)($_SESSION['student_id_no'] ?? ''));
-
+$username = $_SESSION['admin_username'] ?? 'Student';
 $student = null;
 $requests = [];
-$message = '';
-$messageType = 'success';
+$message = trim(is_string($_GET['message'] ?? null) ? $_GET['message'] : '');
+$messageType = ($_GET['type'] ?? '') === 'error' ? 'error' : 'success';
 
-// Pangitaa ang student profile
 if ($userId > 0) {
-    $stmt = $conn->prepare('SELECT id, student_id_no, fullname, course_year, age, gender FROM students WHERE user_id = ? LIMIT 1');
+    $stmt = $conn->prepare(
+        'SELECT id, student_id_no, fullname, course_year, age, gender, contact, email
+         FROM students WHERE user_id = ? LIMIT 1'
+    );
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $student = $stmt->get_result()->fetch_assoc();
@@ -37,38 +62,184 @@ if ($userId > 0) {
 }
 
 if (!$student && $studentIdNo !== '') {
-    $stmt = $conn->prepare('SELECT id, student_id_no, fullname, course_year, age, gender FROM students WHERE student_id_no = ? LIMIT 1');
+    $stmt = $conn->prepare(
+        'SELECT id, student_id_no, fullname, course_year, age, gender, contact, email
+         FROM students WHERE student_id_no = ? LIMIT 1'
+    );
     $stmt->bind_param('s', $studentIdNo);
     $stmt->execute();
     $student = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 }
 
-// Handle Form Submission (Requesting Med Cert)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request') {
-    $purpose = trim($_POST['purpose'] ?? '');
+$form = [
+    'student_name' => (string)($student['fullname'] ?? ''),
+    'course_year' => (string)($student['course_year'] ?? ''),
+    'age' => (string)($student['age'] ?? ''),
+    'gender' => (string)($student['gender'] ?? ''),
+    'contact' => (string)($student['contact'] ?? ''),
+    'email' => (string)($student['email'] ?? ''),
+    'purpose' => '',
+    'allergies' => '',
+    'current_medications' => '',
+    'medical_history' => '',
+    'menstrual_history' => 'Not asked',
+    'alcohol_use' => 'Not asked',
+    'tobacco_use' => 'Not asked',
+    'family_history_tuberculosis' => 'Unknown',
+    'family_history_hypertension' => 'Unknown',
+    'family_history_diabetes' => 'Unknown',
+    'family_history_heart_disease' => 'Unknown',
+    'family_history_other' => ''
+];
 
-    if ($purpose === '') {
-        $message = 'Please provide a purpose for your request.';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $student) {
+    $message = '';
+    $messageType = 'success';
+
+    foreach ($form as $key => $default) {
+        $form[$key] = postedString($key);
+    }
+
+    $token = $_POST['csrf_token'] ?? '';
+    if (!is_string($token) || !hash_equals($csrfToken, $token)) {
+        http_response_code(400);
+        $message = 'Your form expired. Refresh the page and try again.';
         $messageType = 'error';
-    } elseif ($student) {
-        $stmt = $conn->prepare('INSERT INTO med_cert_requests (student_id, student_id_no, purpose) VALUES (?, ?, ?)');
-        $stmt->bind_param('iss', $student['id'], $student['student_id_no'], $purpose);
-        $stmt->execute();
-        $stmt->close();
+    } elseif (($_POST['action'] ?? '') !== 'request') {
+        http_response_code(400);
+        $message = 'Invalid medical certificate request.';
+        $messageType = 'error';
+    } else {
+        $age = filter_var($form['age'], FILTER_VALIDATE_INT);
+        $genderOptions = ['Female', 'Male', 'Non-binary', 'Other', 'Prefer not to say'];
+        $choiceFields = [
+            'menstrual_history' => ['Not applicable', 'Regular', 'Irregular', 'Not asked', 'Prefer not to answer'],
+            'alcohol_use' => ['No', 'Yes', 'Not asked', 'Prefer not to answer'],
+            'tobacco_use' => ['No', 'Yes', 'Not asked', 'Prefer not to answer'],
+            'family_history_tuberculosis' => ['No', 'Yes', 'Unknown', 'Prefer not to answer'],
+            'family_history_hypertension' => ['No', 'Yes', 'Unknown', 'Prefer not to answer'],
+            'family_history_diabetes' => ['No', 'Yes', 'Unknown', 'Prefer not to answer'],
+            'family_history_heart_disease' => ['No', 'Yes', 'Unknown', 'Prefer not to answer']
+        ];
 
-        $message = 'Medical certificate request submitted successfully. Please wait for clinic approval.';
+        if (
+            $form['student_name'] === '' ||
+            mb_strlen($form['student_name']) > 100 ||
+            $form['course_year'] === '' ||
+            mb_strlen($form['course_year']) > 50 ||
+            $age === false ||
+            $age < 1 ||
+            $age > 120 ||
+            !in_array($form['gender'], $genderOptions, true)
+        ) {
+            $message = 'Enter valid personal information, including name, course/year, age, and gender.';
+        } elseif ($form['purpose'] === '' || mb_strlen($form['purpose']) > 255) {
+            $message = 'Enter the certificate purpose (255 characters or fewer).';
+        } elseif (($_POST['consent'] ?? '') !== 'yes') {
+            $message = 'Confirm the information-sharing statement before submitting.';
+        } elseif (
+            mb_strlen($form['contact']) > 50 ||
+            ($form['email'] !== '' && (
+                mb_strlen($form['email']) > 100 ||
+                !filter_var($form['email'], FILTER_VALIDATE_EMAIL)
+            ))
+        ) {
+            $message = 'Enter a valid contact number and email address.';
+        } else {
+            foreach ($choiceFields as $key => $allowedValues) {
+                if (!in_array($form[$key], $allowedValues, true)) {
+                    $message = 'Choose a valid response for each medical history question.';
+                    break;
+                }
+            }
+        }
+
+        $limits = [
+            'allergies' => 2000,
+            'current_medications' => 2000,
+            'medical_history' => 3000,
+            'family_history_other' => 2000
+        ];
+        foreach ($limits as $key => $limit) {
+            if (mb_strlen($form[$key]) > $limit) {
+                $message = 'One or more medical history answers exceed the allowed length.';
+                break;
+            }
+        }
+
+        if ($message === '') {
+            $requestStatus = 'Pending';
+            $studentId = (int)$student['id'];
+            $verifiedStudentId = (string)$student['student_id_no'];
+            $requestAge = (int)$age;
+            $email = $form['email'] === '' ? null : $form['email'];
+
+            try {
+                $stmt = $conn->prepare(
+                    'INSERT INTO med_cert_requests (
+                        student_id, student_id_no, purpose, status,
+                        student_name, course_year, age, gender, contact, email,
+                        allergies, current_medications, medical_history,
+                        menstrual_history, alcohol_use, tobacco_use,
+                        family_history_tuberculosis, family_history_hypertension,
+                        family_history_diabetes, family_history_heart_disease,
+                        family_history_other
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                );
+                $stmt->bind_param(
+                    'isssssis' . str_repeat('s', 13),
+                    $studentId,
+                    $verifiedStudentId,
+                    $form['purpose'],
+                    $requestStatus,
+                    $form['student_name'],
+                    $form['course_year'],
+                    $requestAge,
+                    $form['gender'],
+                    $form['contact'],
+                    $email,
+                    $form['allergies'],
+                    $form['current_medications'],
+                    $form['medical_history'],
+                    $form['menstrual_history'],
+                    $form['alcohol_use'],
+                    $form['tobacco_use'],
+                    $form['family_history_tuberculosis'],
+                    $form['family_history_hypertension'],
+                    $form['family_history_diabetes'],
+                    $form['family_history_heart_disease'],
+                    $form['family_history_other']
+                );
+                $stmt->execute();
+                $stmt->close();
+                redirectCertificateRequest(
+                    'Your request was submitted. Clinic staff will review your information and complete the physical examination when you visit.'
+                );
+            } catch (mysqli_sql_exception $exception) {
+                error_log('Student medical certificate request failed: ' . $exception->getMessage());
+                $message = 'The request could not be saved. Please try again or contact the clinic.';
+                $messageType = 'error';
+            }
+        }
+
+        if ($message !== '') {
+            $messageType = 'error';
+        }
     }
 }
 
-// Load Student Requests
 if ($student) {
     $username = $student['fullname'];
-    $stmt = $conn->prepare('SELECT * FROM med_cert_requests WHERE student_id_no = ? ORDER BY id DESC');
-    $stmt->bind_param('s', $student['student_id_no']);
+    $studentId = (int)$student['id'];
+    $stmt = $conn->prepare(
+        'SELECT * FROM med_cert_requests
+         WHERE student_id = ? ORDER BY id DESC'
+    );
+    $stmt->bind_param('i', $studentId);
     $stmt->execute();
-    $res = $stmt->get_result();
-    while ($row = $res->fetch_assoc()) {
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
         $requests[] = $row;
     }
     $stmt->close();
@@ -79,25 +250,12 @@ if ($student) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical Certificate Request | SHRCMS</title>
+    <title>Medical Certificate | SHRCMS</title>
     <link rel="stylesheet" href="../../css/student-dashboard.css?v=20261114-icons">
-    <style>
-        @media print {
-            body * { visibility: hidden; }
-            .printable-cert, .printable-cert * { visibility: visible; }
-            .printable-cert { position: absolute; left: 0; top: 0; width: 100%; padding: 30px; background: white; }
-            .no-print { display: none !important; }
-        }
-        .status-badge { padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; }
-        .status-Pending { background: #fef08a; color: #854d0e; }
-        .status-Approved { background: #bfdbfe; color: #1e40af; }
-        .status-Completed { background: #bbf7d0; color: #166534; }
-        .status-Rejected { background: #fecaca; color: #991b1b; }
-    </style>
+    <link rel="stylesheet" href="../../css/student-medical-certificate.css">
 </head>
 <body class="student-dashboard-body">
 <div class="student-layout">
-
     <aside class="student-sidebar no-print">
         <div class="student-brand">
             <img src="../../image/logo2.png" alt="SHRCMS Logo">
@@ -123,144 +281,175 @@ if ($student) {
         <header class="student-header no-print">
             <div class="student-header-title">
                 <h1>Medical Certificate</h1>
-                <p>Request and print your verified medical certificates.</p>
+                <p>Submit your health history, visit the clinic for examination, then print your approved certificate.</p>
             </div>
             <div class="student-profile">
                 <div class="student-avatar"><img class="ui-icon" src="../../image/icon-profile.svg" alt="" aria-hidden="true"></div>
-                <div class="student-profile-info">
-                    <strong><?= e($username) ?></strong>
-                    <span>Student</span>
-                </div>
+                <div class="student-profile-info"><strong><?= e($username) ?></strong><span>Student</span></div>
             </div>
         </header>
 
-        <section class="student-content">
+        <section class="student-content student-medical-content">
             <?php if ($message !== ''): ?>
-                <div class="no-print" style="padding: 12px; margin-bottom: 20px; border-radius: 6px; background: <?= $messageType === 'error' ? '#fee2e2' : '#dcfce7' ?>; color: <?= $messageType === 'error' ? '#dc2626' : '#166534' ?>;">
+                <div class="student-medical-alert <?= $messageType === 'error' ? 'is-error' : 'is-success' ?>" role="<?= $messageType === 'error' ? 'alert' : 'status' ?>">
                     <?= e($message) ?>
                 </div>
             <?php endif; ?>
 
-            <!-- REQUEST FORM -->
-            <section class="student-panel no-print" style="margin-bottom: 25px;">
-                <div class="student-panel-heading">
-                    <div>
-                        <h2>Request Medical Certificate</h2>
-                        <p>Fill out the form to request a medical certificate from the clinic.</p>
+            <?php if (!$student): ?>
+                <section class="student-panel student-medical-panel">
+                    <h2>Student profile unavailable</h2>
+                    <p>Your student profile is not linked to this account. Contact clinic staff before submitting a request.</p>
+                </section>
+            <?php else: ?>
+                <section class="student-panel student-medical-panel no-print">
+                    <div class="student-medical-heading">
+                        <div>
+                            <h2>Request a Medical Certificate</h2>
+                            <p>Complete your personal and interview information. Clinic staff will record all physical examination findings during your clinic visit.</p>
+                        </div>
+                        <span class="student-medical-id">Student ID: <?= e($student['student_id_no']) ?></span>
                     </div>
-                </div>
-                <form method="POST" action="student_medical_certificate.php" style="margin-top: 15px;">
-                    <input type="hidden" name="action" value="request">
-                    <div style="margin-bottom: 15px;">
-                        <label style="display:block; margin-bottom: 5px; font-weight: 600;">Purpose of Request *</label>
-                        <textarea name="purpose" rows="3" required placeholder="e.g. Excused absence due to illness, Sports clearance, Internship requirements..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;"></textarea>
-                    </div>
-                    <button type="submit" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Submit Request</button>
-                </form>
-            </section>
 
-            <!-- REQUEST HISTORY TABLE -->
-            <section class="student-panel no-print" style="margin-bottom: 25px;">
-                <div class="student-panel-heading">
-                    <h2>My Requests</h2>
-                </div>
-                <table class="student-table" style="margin-top: 15px;">
-                    <thead>
-                        <tr>
-                            <th>Requested Date</th>
-                            <th>Purpose</th>
-                            <th>Status</th>
-                            <th>Action / Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (count($requests) > 0): ?>
-                            <?php foreach ($requests as $r): ?>
-                                <tr>
-                                    <td><?= e(date('M d, Y', strtotime($r['created_at']))) ?></td>
-                                    <td><?= e($r['purpose']) ?></td>
-                                    <td><span class="status-badge status-<?= e($r['status']) ?>"><?= e($r['status']) ?></span></td>
-                                    <td>
-                                        <?php if ($r['status'] === 'Approved'): ?>
-                                            <span style="color:#1e40af;">Please visit clinic for vital signs.</span>
-                                        <?php elseif ($r['status'] === 'Completed'): ?>
-                                            <a href="#cert-<?= $r['id'] ?>" style="color: #2563eb; font-weight: bold; text-decoration: underline;">View & Print Cert</a>
-                                        <?php elseif ($r['status'] === 'Pending'): ?>
-                                            <span>Waiting for clinic staff approval.</span>
-                                        <?php else: ?>
-                                            <span style="color:#dc2626;">Request Rejected</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr><td colspan="4" class="student-empty">No requests submitted yet.</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </section>
+                    <form method="POST" action="student_medical_certificate.php" class="student-medical-form">
+                        <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                        <input type="hidden" name="action" value="request">
 
-            <!-- COMPLETED CERTIFICATES FOR PRINTING -->
-            <?php foreach ($requests as $r): ?>
-                <?php if ($r['status'] === 'Completed'): ?>
-                    <section class="student-panel printable-cert" id="cert-<?= $r['id'] ?>" style="background:#fff; padding:40px; border-radius:8px; margin-bottom:30px; border:2px solid #cbd5e1;">
-                        <div style="text-align:center; border-bottom:2px solid #2563eb; padding-bottom:15px; margin-bottom:20px;">
-                            <h2 style="margin:0; font-size: 22px;">STUDENT HEALTH RECORD & CLINIC MANAGEMENT SYSTEM</h2>
-                            <p style="margin:5px 0 0 0; color:#475569;">OFFICIAL MEDICAL CERTIFICATE</p>
-                        </div>
-                        
-                        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-                            <p><strong>Date Issued:</strong> <?= e(date('F d, Y', strtotime($r['issued_date']))) ?></p>
-                            <p><strong>Cert Code:</strong> <?= e($r['qr_code_hash']) ?></p>
-                        </div>
+                        <fieldset>
+                            <legend>Personal information</legend>
+                            <div class="student-medical-grid">
+                                <label>Full name
+                                    <input type="text" name="student_name" maxlength="100" required value="<?= e($form['student_name']) ?>">
+                                </label>
+                                <label>Student ID
+                                    <input type="text" value="<?= e($student['student_id_no']) ?>" readonly>
+                                </label>
+                                <label>Course / year
+                                    <input type="text" name="course_year" maxlength="50" required value="<?= e($form['course_year']) ?>">
+                                </label>
+                                <label>Age
+                                    <input type="number" name="age" min="1" max="120" required value="<?= e($form['age']) ?>">
+                                </label>
+                                <label>Gender
+                                    <select name="gender" required>
+                                        <option value="">Select</option>
+                                        <?php foreach (['Female', 'Male', 'Non-binary', 'Other', 'Prefer not to say'] as $option): ?>
+                                            <option value="<?= e($option) ?>" <?= $form['gender'] === $option ? 'selected' : '' ?>><?= e($option) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+                                <label>Contact number
+                                    <input type="text" name="contact" maxlength="50" value="<?= e($form['contact']) ?>">
+                                </label>
+                                <label>Email address
+                                    <input type="email" name="email" maxlength="100" value="<?= e($form['email']) ?>">
+                                </label>
+                                <label class="student-medical-wide">Purpose of certificate
+                                    <input type="text" name="purpose" maxlength="255" required value="<?= e($form['purpose']) ?>" placeholder="What do you need the certificate for?">
+                                </label>
+                            </div>
+                        </fieldset>
 
-                        <p style="margin-bottom:15px;">To Whom It May Concern,</p>
-                        
-                        <p style="margin-bottom:20px; line-height:1.8;">
-                            This is to certify that <strong><?= e($student['fullname']) ?></strong>, 
-                            (Student ID: <strong><?= e($student['student_id_no']) ?></strong>, 
-                            Course/Year: <strong><?= e($student['course_year'] ?: 'N/A') ?></strong>, 
-                            Age: <strong><?= e($student['age'] ?: 'N/A') ?></strong>, 
-                            Gender: <strong><?= e($student['gender'] ?: 'N/A') ?></strong>) 
-                            has been examined and attended to at the School Clinic.
-                        </p>
-
-                        <div style="margin-bottom:15px; background: #f8fafc; padding: 15px; border-radius: 6px;">
-                            <strong>Diagnosis / Medical Findings:</strong>
-                            <p style="margin:5px 0 0 0;"><?= nl2br(e($r['diagnosis'])) ?></p>
-                        </div>
-
-                        <div style="margin-bottom:25px; background: #f8fafc; padding: 15px; border-radius: 6px;">
-                            <strong>Recommendations / Remarks:</strong>
-                            <p style="margin:5px 0 0 0;"><?= nl2br(e($r['recommendation'])) ?></p>
-                        </div>
-
-                        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:40px;">
-                            <!-- QR CODE -->
-                            <div style="text-align:center;">
-                                <?php 
-                                    $qrData = "VERIFIED MED CERT\nCode: " . $r['qr_code_hash'] . "\nStudent: " . $student['fullname'] . "\nIssued: " . $r['issued_date'];
-                                    $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" . urlencode($qrData);
+                        <fieldset>
+                            <legend>Medical interview</legend>
+                            <p class="student-medical-help">Your answers are reviewed by clinic staff and are not printed on the certificate.</p>
+                            <div class="student-medical-grid">
+                                <label class="student-medical-wide">Allergies
+                                    <textarea name="allergies" rows="3" maxlength="2000" placeholder="List known allergies or enter none."><?= e($form['allergies']) ?></textarea>
+                                </label>
+                                <label class="student-medical-wide">Current medications
+                                    <textarea name="current_medications" rows="3" maxlength="2000" placeholder="List current medications or enter none."><?= e($form['current_medications']) ?></textarea>
+                                </label>
+                                <label class="student-medical-wide">Past or current medical history
+                                    <textarea name="medical_history" rows="3" maxlength="3000" placeholder="Include relevant past or current conditions."><?= e($form['medical_history']) ?></textarea>
+                                </label>
+                                <label>Menstrual history
+                                    <select name="menstrual_history" required>
+                                        <?php foreach (['Not asked', 'Not applicable', 'Regular', 'Irregular', 'Prefer not to answer'] as $option): ?>
+                                            <option value="<?= e($option) ?>" <?= $form['menstrual_history'] === $option ? 'selected' : '' ?>><?= e($option) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+                                <label>Alcohol use
+                                    <select name="alcohol_use" required>
+                                        <?php foreach (['Not asked', 'No', 'Yes', 'Prefer not to answer'] as $option): ?>
+                                            <option value="<?= e($option) ?>" <?= $form['alcohol_use'] === $option ? 'selected' : '' ?>><?= e($option) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+                                <label>Tobacco use
+                                    <select name="tobacco_use" required>
+                                        <?php foreach (['Not asked', 'No', 'Yes', 'Prefer not to answer'] as $option): ?>
+                                            <option value="<?= e($option) ?>" <?= $form['tobacco_use'] === $option ? 'selected' : '' ?>><?= e($option) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+                                <?php
+                                $familyHistoryLabels = [
+                                    'family_history_tuberculosis' => 'Family history of tuberculosis',
+                                    'family_history_hypertension' => 'Family history of high blood pressure',
+                                    'family_history_diabetes' => 'Family history of diabetes',
+                                    'family_history_heart_disease' => 'Family history of heart disease'
+                                ];
+                                foreach ($familyHistoryLabels as $key => $label):
                                 ?>
-                                <img src="<?= $qrUrl ?>" alt="QR Code Verification" style="border:1px solid #ccc; padding:3px; background:#fff;">
-                                <br><small style="font-size:10px; color:#64748b;">Scan to Verify</small>
+                                    <label><?= e($label) ?>
+                                        <select name="<?= e($key) ?>" required>
+                                            <?php foreach (['Unknown', 'No', 'Yes', 'Prefer not to answer'] as $option): ?>
+                                                <option value="<?= e($option) ?>" <?= $form[$key] === $option ? 'selected' : '' ?>><?= e($option) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                <?php endforeach; ?>
+                                <label class="student-medical-wide">Other family health history
+                                    <textarea name="family_history_other" rows="3" maxlength="2000"><?= e($form['family_history_other']) ?></textarea>
+                                </label>
                             </div>
+                        </fieldset>
 
-                            <!-- SIGNATURE -->
-                            <div style="text-align:center;">
-                                <div style="border-bottom:1px solid #000; width:220px; margin-bottom:5px;"></div>
-                                <strong><?= e($r['approved_by'] ?: 'Clinic Staff') ?></strong><br>
-                                <small>Attending Clinic Personnel</small>
-                            </div>
+                        <label class="student-medical-consent">
+                            <input type="checkbox" name="consent" value="yes" required>
+                            <span>I confirm that the information above is accurate to the best of my knowledge and may be reviewed by authorized clinic staff for this request.</span>
+                        </label>
+                        <div class="student-medical-actions">
+                            <button type="submit" class="student-medical-button">Submit request</button>
                         </div>
+                    </form>
+                </section>
 
-                        <div class="no-print" style="margin-top:25px; text-align:right;">
-                            <button onclick="window.print()" style="padding:8px 18px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;"><img class="ui-icon" src="../../image/icon-print.svg" alt="" aria-hidden="true"> Print Certificate</button>
-                        </div>
-                    </section>
-                <?php endif; ?>
-            <?php endforeach; ?>
-
+                <section class="student-panel student-medical-panel no-print">
+                    <div class="student-medical-heading">
+                        <div><h2>My Requests</h2><p>After staff completes your physical examination and approves the request, print your certificate here.</p></div>
+                    </div>
+                    <div class="student-medical-table-wrap">
+                        <table class="student-table student-medical-table">
+                            <thead><tr><th>Requested</th><th>Purpose</th><th>Status</th><th>Next step</th></tr></thead>
+                            <tbody>
+                            <?php if ($requests): ?>
+                                <?php foreach ($requests as $request): ?>
+                                    <tr>
+                                        <td><?= e(date('M d, Y', strtotime($request['created_at']))) ?></td>
+                                        <td><?= e($request['purpose']) ?></td>
+                                        <td><span class="student-medical-status status-<?= e($request['status']) ?>"><?= e($request['status']) ?></span></td>
+                                        <td>
+                                            <?php if (in_array($request['status'], ['Approved', 'Completed'], true) && !empty($request['qr_code_hash'])): ?>
+                                                <a class="student-medical-link" href="../print_medical_certificate_request.php?id=<?= (int)$request['id'] ?>">View / print certificate</a>
+                                            <?php elseif ($request['status'] === 'Pending' || ($request['status'] === 'Approved' && empty($request['qr_code_hash']))): ?>
+                                                Please visit the clinic for your physical examination.
+                                            <?php else: ?>
+                                                Contact the clinic if you need more information.
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="4" class="student-empty">No medical certificate requests yet.</td></tr>
+                            <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            <?php endif; ?>
         </section>
     </main>
 </div>

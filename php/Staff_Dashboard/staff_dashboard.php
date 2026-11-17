@@ -1,6 +1,10 @@
 
 <?php
 session_start();
+if (!empty($_SESSION['must_change_password'])) {
+    header('Location: ../change_initial_password.php');
+    exit();
+}
 
 require_once __DIR__ . '/../db.php';
 
@@ -52,10 +56,6 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                 <span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard
             </a>
 
-            <a href="student_records.php">
-                <span><img class="ui-icon" src="../../image/icon-profile.svg" alt="" aria-hidden="true"></span> Student Records
-            </a>
-
             <a href="clinic_consultation.php">
                 <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation
             </a>
@@ -64,18 +64,8 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                 <span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation
             </a>
 
-            <a href="clinic_visit_records.php">
-                <span><img class="ui-icon" src="../../image/icon-calendar.svg" alt="" aria-hidden="true"></span> Clinic Visit Records
-            </a>
-
-            <p class="sidebar-label">INVENTORY MANAGEMENT</p>
-
-            <a href="equipment_inventory.php">
-                <span><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"></span> Equipment Inventory
-            </a>
-
-            <a href="medicine_inventory.php">
-                <span><img class="ui-icon" src="../../image/icon-capsule.svg" alt="" aria-hidden="true"></span> Medicine Inventory
+            <a href="scan_medical_certificate.php">
+                <span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate
             </a>
 
             <p class="sidebar-label">REPORTS</p>
@@ -125,8 +115,7 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
 
                <h2>Welcome back, <?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>!</h2>
                 <p>
-                    Manage student records, consultations, clinic visits,
-                    medicines, equipment, and health reports in one place.
+                   Manage clinic consultations, certificate requests, and health reports.
                 </p>
 
                 <a href="clinic_consultation.php" class="welcome-button">
@@ -148,13 +137,6 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
 
             <div class="module-grid">
 
-                <a href="student_records.php" class="module-card">
-                    <div class="module-icon blue"><img class="ui-icon" src="../../image/icon-profile.svg" alt="" aria-hidden="true"></div>
-                    <h3>Student Records</h3>
-                    <p>Access student profiles and health information.</p>
-                    <span class="module-link">Open records →</span>
-                </a>
-
                 <a href="clinic_consultation.php" class="module-card">
                     <div class="module-icon green"><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></div>
                     <h3>Clinic Consultation</h3>
@@ -165,29 +147,8 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                 <a href="health_documentation.php" class="module-card">
                     <div class="module-icon orange"><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></div>
                     <h3>Health Documentation</h3>
-                    <p>Manage examination results and health documents.</p>
+                    <p>Review certificate requests and generate QR-verified certificates.</p>
                     <span class="module-link">View documents →</span>
-                </a>
-
-                <a href="clinic_visit_records.php" class="module-card">
-                    <div class="module-icon purple"><img class="ui-icon" src="../../image/icon-calendar.svg" alt="" aria-hidden="true"></div>
-                    <h3>Clinic Visit Records</h3>
-                    <p>Review student visits and consultation history.</p>
-                    <span class="module-link">View visits →</span>
-                </a>
-
-                <a href="equipment_inventory.php" class="module-card">
-                    <div class="module-icon teal"><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"></div>
-                    <h3>Equipment Inventory</h3>
-                    <p>Track equipment quantities, conditions, and maintenance.</p>
-                    <span class="module-link">Manage equipment →</span>
-                </a>
-
-                <a href="medicine_inventory.php" class="module-card">
-                    <div class="module-icon red"><img class="ui-icon" src="../../image/icon-capsule.svg" alt="" aria-hidden="true"></div>
-                    <h3>Medicine Inventory</h3>
-                    <p>Monitor medicine stocks, expiration dates, and shortages.</p>
-                    <span class="module-link">Manage medicines →</span>
                 </a>
 
                 <a href="clinic_reports.php" class="module-card">
@@ -197,42 +158,6 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                     <span class="module-link">View reports →</span>
                 </a>
 
-            </div>
-        </section>
-
-        <!-- INVENTORY SHORTCUTS -->
-        <section class="dashboard-section inventory-section">
-            <div class="section-heading">
-                <div>
-                    <h2>Inventory Management</h2>
-                    <p>Quick access to clinic supplies and resources.</p>
-                </div>
-            </div>
-
-            <div class="inventory-shortcuts">
-                <div class="inventory-shortcut">
-                    <div>
-                        <span class="inventory-small-icon"><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"></span>
-                        <div>
-                            <h3>Equipment Inventory</h3>
-                            <p>Equipment records and maintenance tracking</p>
-                        </div>
-                    </div>
-
-                    <a href="equipment_inventory.php">Manage →</a>
-                </div>
-
-                <div class="inventory-shortcut">
-                    <div>
-                        <span class="inventory-small-icon medicine-icon"><img class="ui-icon" src="../../image/icon-capsule.svg" alt="" aria-hidden="true"></span>
-                        <div>
-                            <h3>Medicine Inventory</h3>
-                            <p>Stock monitoring and expiration tracking</p>
-                        </div>
-                    </div>
-
-                    <a href="medicine_inventory.php">Manage →</a>
-                </div>
             </div>
         </section>
 

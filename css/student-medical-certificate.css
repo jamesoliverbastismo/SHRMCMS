@@ -1,0 +1,240 @@
+.student-medical-content {
+    display: grid;
+    gap: 22px;
+}
+
+.student-medical-panel {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.student-medical-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 22px 24px;
+    border-bottom: 1px solid #e8eee8;
+}
+
+.student-medical-heading h2 {
+    margin: 0 0 7px;
+    color: #263d2c;
+    font-size: 19px;
+}
+
+.student-medical-heading p,
+.student-medical-help {
+    margin: 0;
+    color: #718073;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.student-medical-id {
+    padding: 8px 10px;
+    background: #f0f6f0;
+    color: #315c3b;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.student-medical-form {
+    display: grid;
+    gap: 24px;
+    padding: 24px;
+}
+
+.student-medical-form fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 18px;
+    border: 1px solid #e0e8e0;
+}
+
+.student-medical-form legend {
+    padding: 0 8px;
+    color: #315c3b;
+    font-size: 15px;
+    font-weight: 750;
+}
+
+.student-medical-help {
+    margin: -4px 0 16px;
+}
+
+.student-medical-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.student-medical-grid label {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+    color: #35483a;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.student-medical-grid input,
+.student-medical-grid select,
+.student-medical-grid textarea {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid #d5dfd6;
+    border-radius: 0;
+    background: #fff;
+    color: #26372a;
+    font: inherit;
+    font-size: 13px;
+}
+
+.student-medical-grid input:focus,
+.student-medical-grid select:focus,
+.student-medical-grid textarea:focus {
+    border-color: #47764e;
+    outline: 2px solid rgba(71, 118, 78, .15);
+}
+
+.student-medical-grid textarea {
+    min-height: 84px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.student-medical-grid input[readonly] {
+    background: #f4f7f4;
+    color: #68756a;
+}
+
+.student-medical-wide {
+    grid-column: 1 / -1;
+}
+
+.student-medical-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: #536255;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.student-medical-consent input {
+    margin-top: 3px;
+}
+
+.student-medical-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.student-medical-button {
+    min-height: 42px;
+    padding: 10px 18px;
+    border: 0;
+    background: #315c3b;
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.student-medical-button:hover {
+    background: #24482d;
+}
+
+.student-medical-alert {
+    padding: 13px 16px;
+    border: 1px solid;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.student-medical-alert.is-success {
+    border-color: #c9dfcd;
+    background: #eff8f0;
+    color: #285a34;
+}
+
+.student-medical-alert.is-error {
+    border-color: #edcfca;
+    background: #fff2f0;
+    color: #a13d33;
+}
+
+.student-medical-table-wrap {
+    overflow-x: auto;
+}
+
+.student-medical-table {
+    width: 100%;
+    min-width: 650px;
+}
+
+.student-medical-status {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.status-Pending {
+    background: #fef08a;
+    color: #854d0e;
+}
+
+.status-Approved {
+    background: #bbf7d0;
+    color: #166534;
+}
+
+.status-Completed {
+    background: #bbf7d0;
+    color: #166534;
+}
+
+.status-Rejected {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.student-medical-link {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+    .student-medical-heading {
+        flex-direction: column;
+        padding: 18px;
+    }
+
+    .student-medical-form {
+        padding: 18px;
+    }
+
+    .student-medical-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .student-medical-wide {
+        grid-column: auto;
+    }
+}
+
+@media print {
+    .student-sidebar,
+    .student-header,
+    .no-print {
+        display: none !important;
+    }
+}
