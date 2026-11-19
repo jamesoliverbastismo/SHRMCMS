@@ -94,6 +94,26 @@ function findRosterStaff(mysqli $conn, string $staffId): ?array
     return $staff;
 }
 
+function findRosterUserByEmailOrName(mysqli $conn, string $email, string $name): ?array
+{
+    if ($email !== '') {
+        $stmt = $conn->prepare('SELECT id FROM users WHERE email = ? LIMIT 2');
+        $stmt->bind_param('s', $email);
+    } else {
+        $stmt = $conn->prepare('SELECT id FROM users WHERE name = ? LIMIT 2');
+        $stmt->bind_param('s', $name);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 1) {
+        $stmt->close();
+        throw new RuntimeException('This staff identity matches multiple user accounts.');
+    }
+    $user = $result->fetch_assoc() ?: null;
+    $stmt->close();
+    return $user;
+}
+
 function ensureUniqueUserEmail(
     mysqli $conn,
     ?string $email,
@@ -158,15 +178,6 @@ if ($handle === false) {
 }
 
 $headers = fgetcsv($handle, null, ',', '"', '');
-$expectedHeaders = [
-    'role',
-    'id_number',
-    'full_name',
-    'email',
-    'birthday',
-    'course_year',
-];
-
 if (!$headers) {
     fclose($handle);
     redirectRoster('The CSV file is empty or missing its header row.', 'error');
@@ -175,18 +186,31 @@ if (!$headers) {
 $headers[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$headers[0]);
 $headers = array_map(
     static function ($header): string {
-        return strtolower(trim((string)$header));
+        $normalized = strtolower(trim((string)$header));
+        if (in_array($normalized, ['id', 'user_id', 'student_id', 'login_id'], true)) {
+            return 'id_number';
+        }
+        if (in_array($normalized, ['name', 'fullname', 'student_name'], true)) {
+            return 'full_name';
+        }
+        if (in_array($normalized, ['birthdate', 'date_of_birth', 'dob'], true)) {
+            return 'birthday';
+        }
+        return $normalized;
     },
     $headers
 );
+$allowedHeaders = ['role', 'id_number', 'full_name', 'email', 'birthday', 'course_year'];
+$requiredHeaders = ['role', 'id_number', 'full_name', 'birthday'];
 
 if (
     count($headers) !== count(array_unique($headers)) ||
-    array_diff($expectedHeaders, $headers)
+    array_diff($requiredHeaders, $headers) ||
+    array_diff($headers, $allowedHeaders)
 ) {
     fclose($handle);
     redirectRoster(
-        'CSV header must include: role, id_number, full_name, email, birthday, course_year.',
+        'CSV header must include: id_number, full_name, role, birthday/birthdate. Optional: email, course_year.',
         'error'
     );
 }
@@ -215,23 +239,39 @@ while (($values = fgetcsv($handle, null, ',', '"', '')) !== false) {
     $values = array_pad($values, count($headers), '');
     $row = [];
 
-    foreach ($expectedHeaders as $header) {
-        $row[$header] = trim((string)($values[$columnIndexes[$header]] ?? ''));
+    foreach ($allowedHeaders as $header) {
+        $columnIndex = $columnIndexes[$header] ?? null;
+        $row[$header] = $columnIndex === null
+            ? ''
+            : trim((string)($values[$columnIndex] ?? ''));
     }
 
     $role = strtolower($row['role']);
     $row['role'] = $role === 'teacher'
         ? 'Teacher'
         : ($role === 'staff' ? 'Staff' : ($role === 'student' ? 'Student' : ''));
-    $birthday = DateTimeImmutable::createFromFormat('!Y-m-d', $row['birthday']);
-    $dateErrors = DateTimeImmutable::getLastErrors();
+    $birthday = false;
+    foreach (['Y-m-d', 'm/d/Y', 'Y/m/d'] as $birthDateFormat) {
+        $candidate = DateTimeImmutable::createFromFormat('!' . $birthDateFormat, $row['birthday']);
+        $dateErrors = $candidate !== false ? DateTimeImmutable::getLastErrors() : false;
+        if (
+            $candidate !== false &&
+            $candidate->format($birthDateFormat) === $row['birthday'] &&
+            ($dateErrors === false || (
+                $dateErrors['warning_count'] === 0 &&
+                $dateErrors['error_count'] === 0
+            ))
+        ) {
+            $birthday = $candidate;
+            break;
+        }
+    }
     $validBirthday = $birthday !== false &&
-        $birthday->format('Y-m-d') === $row['birthday'] &&
-        ($dateErrors === false || (
-            $dateErrors['warning_count'] === 0 &&
-            $dateErrors['error_count'] === 0
-        )) &&
         $birthday <= new DateTimeImmutable('today');
+    if ($validBirthday) {
+        $normalizedBirthday = $birthday->format('Y-m-d');
+        $row['birthday'] = $normalizedBirthday;
+    }
 
     $rowError = '';
 
@@ -245,13 +285,12 @@ while (($values = fgetcsv($handle, null, ',', '"', '')) !== false) {
     ) {
         $rowError = 'full_name is required and must be 100 characters or fewer.';
     } elseif (
-        ($row['role'] !== 'Student' && $row['email'] === '') ||
         ($row['email'] !== '' && (
             strlen($row['email']) > 100 ||
             !filter_var($row['email'], FILTER_VALIDATE_EMAIL)
         ))
     ) {
-        $rowError = 'email must be valid and 100 characters or fewer; it is required for staff and teachers.';
+        $rowError = 'email must be valid and 100 characters or fewer.';
     } elseif (!$validBirthday) {
         $rowError = 'birthday must be a valid, non-future date in YYYY-MM-DD format.';
     } elseif (strlen($row['course_year']) > 50) {
@@ -476,6 +515,38 @@ try {
                 $staffStmt->close();
                 $created++;
             }
+
+            $directoryUser = null;
+            if ($email !== null) {
+                $directoryStmt = $conn->prepare(
+                    'SELECT id FROM users WHERE email = ? LIMIT 2'
+                );
+                $directoryStmt->bind_param('s', $email);
+                $directoryStmt->execute();
+                $directoryResult = $directoryStmt->get_result();
+                if ($directoryResult->num_rows > 1) {
+                    $directoryStmt->close();
+                    throw rosterRowError($currentRowNumber, 'this email matches multiple user-directory accounts.');
+                }
+                $directoryUser = $directoryResult->fetch_assoc() ?: null;
+                $directoryStmt->close();
+            }
+
+            $directoryUserId = (int)($directoryUser['id'] ?? 0);
+            if ($directoryUserId > 0) {
+                $directoryStmt = $conn->prepare(
+                    'UPDATE users SET name=?, email=?, role=?, password=?, status=\'Active\' WHERE id=?'
+                );
+                $directoryStmt->bind_param('ssssi', $name, $email, $role, $passwordHash, $directoryUserId);
+            } else {
+                $directoryStmt = $conn->prepare(
+                    'INSERT INTO users (name, email, role, password, status)
+                     VALUES (?, ?, ?, ?, \'Active\')'
+                );
+                $directoryStmt->bind_param('ssss', $name, $email, $role, $passwordHash);
+            }
+            $directoryStmt->execute();
+            $directoryStmt->close();
 
             $accountType = 'staff';
             $accountId = $staffId;

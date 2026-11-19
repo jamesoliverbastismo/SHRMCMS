@@ -6,6 +6,8 @@ if (!empty($_SESSION['must_change_password'])) {
 }
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Staff', 'Administrator'], '../login.php');
 
 // Check if the user is logged in and has the correct role
 if (
@@ -20,6 +22,7 @@ if (
 
 // Get the username from the session
 $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
+rbacLog($conn, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed');
 ?>
 
 
@@ -60,10 +63,20 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                 <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation
             </a>
 
-            <a href="clinic_operations.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Passes, Referrals &amp; Incidents</a>
+            <a href="student_profiles.php">
+                <span><img class="ui-icon" src="../../image/icon-student.svg" alt="" aria-hidden="true"></span> Student Profiles
+            </a>
+
+            <a href="clinic_operations.php?view=passes"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Clinic Passes</a>
+            <a href="clinic_operations.php?view=referrals"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Referrals</a>
+            <a href="clinic_operations.php?view=incidents"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Incidents</a>
             
             <a href="health_documentation.php">
                 <span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation
+            </a>
+
+            <a href="medical_examinations.php">
+                <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medical Examinations
             </a>
 
             <a href="scan_medical_certificate.php">
@@ -102,6 +115,11 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                 <p class="header-subtitle">
                     Manage student health services and clinic resources.
                 </p>
+                <nav class="dashboard-header-actions" aria-label="Clinic operations">
+                    <a href="clinic_operations.php?view=passes">Clinic Passes</a>
+                    <a href="clinic_operations.php?view=referrals">Referrals</a>
+                    <a href="clinic_operations.php?view=incidents">Incidents</a>
+                </nav>
             </div>
 
             <div class="staff-user">
@@ -150,6 +168,34 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                     <span class="module-link">Open consultations →</span>
                 </a>
 
+                <a href="student_profiles.php" class="module-card">
+                    <div class="module-icon blue"><img class="ui-icon" src="../../image/icon-student.svg" alt="" aria-hidden="true"></div>
+                    <h3>Student Profiles</h3>
+                    <p>View, add, edit, and maintain student profile information.</p>
+                    <span class="module-link">Manage profiles →</span>
+                </a>
+
+                <a href="clinic_operations.php?view=passes" class="module-card">
+                    <div class="module-icon purple"><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></div>
+                    <h3>Clinic Passes</h3>
+                    <p>Issue passes and track return-to-class status.</p>
+                    <span class="module-link">Manage passes →</span>
+                </a>
+
+                <a href="clinic_operations.php?view=referrals" class="module-card">
+                    <div class="module-icon teal"><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></div>
+                    <h3>Referrals</h3>
+                    <p>Create referrals and manage follow-up actions.</p>
+                    <span class="module-link">Manage referrals →</span>
+                </a>
+
+                <a href="clinic_operations.php?view=incidents" class="module-card">
+                    <div class="module-icon red"><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></div>
+                    <h3>Incidents</h3>
+                    <p>Document incidents and first-aid care.</p>
+                    <span class="module-link">Manage incidents →</span>
+                </a>
+
                 <a href="health_documentation.php" class="module-card">
                     <div class="module-icon orange"><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></div>
                     <h3>Health Documentation</h3>
@@ -157,11 +203,25 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                     <span class="module-link">View documents →</span>
                 </a>
 
+                <a href="medical_examinations.php" class="module-card">
+                    <div class="module-icon teal"><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></div>
+                    <h3>Medical Examinations</h3>
+                    <p>Record clinic-conducted assessments and review history by date or academic year.</p>
+                    <span class="module-link">Manage examinations →</span>
+                </a>
+
+                <a href="medicine_inventory.php" class="module-card">
+                    <div class="module-icon orange"><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></div>
+                    <h3>Medicine Inventory</h3>
+                    <p>Monitor stock levels and receive low-stock and expiration alerts.</p>
+                    <span class="module-link">View inventory alerts →</span>
+                </a>
+
                 <a href="clinic_reports.php" class="module-card">
                     <div class="module-icon navy"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"></div>
                     <h3>Clinic Reports</h3>
-                    <p>Access clinic activity and inventory reports.</p>
-                    <span class="module-link">View reports →</span>
+                    <p>View clinic activity, health trends, and inventory reports.</p>
+                    <span class="module-link">View summaries and trends →</span>
                 </a>
 
             </div>

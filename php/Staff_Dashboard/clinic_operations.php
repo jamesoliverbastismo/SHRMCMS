@@ -9,6 +9,8 @@ if (!empty($_SESSION['must_change_password'])) {
     exit();
 }
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Staff', 'Administrator'], '../login.php');
 
 if (
     !isset($_SESSION['admin_logged_in']) ||
@@ -28,9 +30,9 @@ function e($value): string
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
-function redirectOps(string $msg, string $type = 'success'): void
+function redirectOps(string $msg, string $type = 'success', string $view = 'passes'): void
 {
-    header('Location: clinic_operations.php?message=' . urlencode($msg) . '&type=' . urlencode($type));
+    header('Location: clinic_operations.php?view=' . urlencode($view) . '&message=' . urlencode($msg) . '&type=' . urlencode($type));
     exit();
 }
 
@@ -43,6 +45,48 @@ $staffName = $_SESSION['admin_username'] ?? 'Clinic Staff';
 
 $message = trim((string)($_GET['message'] ?? ''));
 $messageType = ($_GET['type'] ?? '') === 'error' ? 'error' : 'success';
+$view = (string)($_GET['view'] ?? 'passes');
+if (!in_array($view, ['passes', 'referrals', 'incidents'], true)) {
+    $view = 'passes';
+}
+
+function ensureReferralTrackingSchema(mysqli $conn): void
+{
+    $columns = [];
+    $result = $conn->query('SHOW COLUMNS FROM clinic_referrals');
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $columns[$row['Field']] = true;
+        }
+    }
+    $definitions = [
+        'follow_up_due_date' => 'DATE NULL',
+        'follow_up_outcome' => 'TEXT NULL',
+        'follow_up_completed_at' => 'DATETIME NULL',
+        'last_follow_up_at' => 'DATETIME NULL'
+    ];
+    foreach ($definitions as $column => $definition) {
+        if (!isset($columns[$column])) {
+            @$conn->query("ALTER TABLE clinic_referrals ADD COLUMN `{$column}` {$definition}");
+        }
+    }
+    @$conn->query(
+        'CREATE TABLE IF NOT EXISTS clinic_referral_followups (
+            id INT NOT NULL AUTO_INCREMENT,
+            referral_id INT NOT NULL,
+            status VARCHAR(60) NOT NULL,
+            remarks TEXT NULL,
+            outcome TEXT NULL,
+            followed_up_by VARCHAR(100) DEFAULT NULL,
+            followed_up_at DATETIME NOT NULL,
+            PRIMARY KEY (id),
+            INDEX idx_referral_followups_referral (referral_id),
+            INDEX idx_referral_followups_date (followed_up_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+}
+
+ensureReferralTrackingSchema($conn);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrf, (string)($_POST['csrf_token'] ?? ''))) {
@@ -60,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $authStatus = trim((string)($_POST['authorization_status'] ?? 'Authorized'));
 
             if ($studentNo === '' || $passDate === '') {
-                redirectOps('Student ID and pass time are required.', 'error');
+                redirectOps('Student ID and pass time are required.', 'error', 'passes');
             }
 
             $stmt = $conn->prepare(
@@ -72,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $stmt->close();
 
-            redirectOps('Clinic pass issued for attendance and return-to-class tracking.');
+            redirectOps('Clinic pass issued for attendance and return-to-class tracking.', 'success', 'passes');
         }
 
         if ($action === 'mark_returned') {
@@ -87,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $stmt->close();
             }
-            redirectOps('Return-to-class time recorded.');
+            redirectOps('Return-to-class time recorded.', 'success', 'passes');
         }
 
         // 2. REFERRAL CREATION & FOLLOW-UP
@@ -97,41 +141,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $destination = trim((string)($_POST['destination'] ?? ''));
             $reason = trim((string)($_POST['reason'] ?? ''));
             $reqFollowUp = isset($_POST['action_required']) ? 1 : 0;
+            $dueDate = trim((string)($_POST['follow_up_due_date'] ?? ''));
 
             if ($studentNo === '' || $refDate === '' || $destination === '' || $reason === '') {
-                redirectOps('All referral fields are required.', 'error');
+                redirectOps('All referral fields are required.', 'error', 'referrals');
+            }
+            if ($dueDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dueDate)) {
+                redirectOps('Enter a valid follow-up due date.', 'error', 'referrals');
             }
 
             $status = $reqFollowUp ? 'Pending Follow-Up' : 'No Further Action Needed';
             $stmt = $conn->prepare(
                 "INSERT INTO clinic_referrals
-                 (student_id_no, referral_date, reason, destination, follow_up_status, action_required, recorded_by_staff_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+                 (student_id_no, referral_date, reason, destination, follow_up_status, action_required, recorded_by_staff_id, follow_up_due_date)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             );
-            $stmt->bind_param('sssssii', $studentNo, $refDate, $reason, $destination, $status, $reqFollowUp, $staffId);
+            $dueDateValue = $dueDate !== '' ? $dueDate : null;
+            $stmt->bind_param('sssssiss', $studentNo, $refDate, $reason, $destination, $status, $reqFollowUp, $staffId, $dueDateValue);
             $stmt->execute();
             $stmt->close();
 
-            redirectOps('Referral record saved.');
+            redirectOps('Referral record saved.', 'success', 'referrals');
         }
 
         if ($action === 'update_referral') {
             $refId = filter_var($_POST['ref_id'] ?? null, FILTER_VALIDATE_INT);
             $status = trim((string)($_POST['follow_up_status'] ?? 'Follow-Up Logged'));
             $remarks = trim((string)($_POST['follow_up_remarks'] ?? ''));
+            $outcome = trim((string)($_POST['follow_up_outcome'] ?? ''));
             $reqFollowUp = ($status === 'Pending Follow-Up') ? 1 : 0;
+            $closed = in_array($status, ['Closed', 'No Further Action Needed'], true);
 
             if ($refId && $refId > 0) {
                 $stmt = $conn->prepare(
                     "UPDATE clinic_referrals
-                     SET follow_up_status = ?, action_required = ?, follow_up_remarks = ?
+                     SET follow_up_status = ?, action_required = ?, follow_up_remarks = ?,
+                         follow_up_outcome = ?, last_follow_up_at = NOW(),
+                         follow_up_completed_at = ?
                      WHERE id = ?"
                 );
-                $stmt->bind_param('sisi', $status, $reqFollowUp, $remarks, $refId);
+                $completedAt = $closed ? date('Y-m-d H:i:s') : null;
+                $stmt->bind_param('sisssi', $status, $reqFollowUp, $remarks, $outcome, $completedAt, $refId);
                 $stmt->execute();
                 $stmt->close();
+
+                $followedUpBy = mb_substr($staffName, 0, 100);
+                $history = $conn->prepare(
+                    'INSERT INTO clinic_referral_followups
+                     (referral_id, status, remarks, outcome, followed_up_by, followed_up_at)
+                     VALUES (?, ?, ?, ?, ?, NOW())'
+                );
+                $history->bind_param('issss', $refId, $status, $remarks, $outcome, $followedUpBy);
+                $history->execute();
+                $history->close();
             }
-            redirectOps('Referral follow-up status updated.');
+            redirectOps('Referral follow-up status updated.', 'success', 'referrals');
         }
 
         // 3. INCIDENT & FIRST-AID DOCUMENTATION
@@ -145,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = trim((string)($_POST['follow_up_status'] ?? 'Open'));
 
             if ($studentNo === '' || $incDate === '' || $location === '' || $circumstances === '' || $firstAid === '') {
-                redirectOps('All incident and first-aid fields are required.', 'error');
+                redirectOps('All incident and first-aid fields are required.', 'error', 'incidents');
             }
 
             $stmt = $conn->prepare(
@@ -157,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $stmt->close();
 
-            redirectOps('Incident and first-aid record saved.');
+            redirectOps('Incident and first-aid record saved.', 'success', 'incidents');
         }
 
         if ($action === 'update_incident') {
@@ -173,17 +237,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $stmt->close();
             }
-            redirectOps('Incident follow-up outcome updated.');
+            redirectOps('Incident follow-up outcome updated.', 'success', 'incidents');
         }
     } catch (Throwable $ex) {
         error_log('Clinic operations error: ' . $ex->getMessage());
-        redirectOps('Unable to save operation record. Check that the required database tables exist.', 'error');
+        $errorView = in_array($action, ['add_referral', 'update_referral'], true)
+            ? 'referrals'
+            : (in_array($action, ['add_incident', 'update_incident'], true) ? 'incidents' : 'passes');
+        redirectOps('Unable to save operation record. Check that the required database tables exist.', 'error', $errorView);
     }
 }
 
 $passes = [];
 $referrals = [];
 $incidents = [];
+$referralFollowups = [];
+$referralStats = ['pending' => 0, 'overdue' => 0, 'closed' => 0];
 
 try {
     $pRes = $conn->query(
@@ -209,6 +278,38 @@ try {
          ORDER BY i.incident_datetime DESC, i.id DESC LIMIT 30"
     );
     $incidents = $iRes->fetch_all(MYSQLI_ASSOC);
+
+    if ($view === 'referrals') {
+        $statsRes = $conn->query(
+            "SELECT
+                SUM(CASE WHEN action_required=1 AND follow_up_status NOT IN ('Closed','No Further Action Needed') THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN action_required=1
+                    AND follow_up_status NOT IN ('Closed','No Further Action Needed')
+                    AND follow_up_due_date IS NOT NULL
+                    AND follow_up_due_date < CURDATE() THEN 1 ELSE 0 END) AS overdue,
+                SUM(CASE WHEN follow_up_status IN ('Closed','No Further Action Needed') THEN 1 ELSE 0 END) AS closed
+             FROM clinic_referrals"
+        );
+        if ($statsRes) {
+            $statsRow = $statsRes->fetch_assoc();
+            $referralStats = [
+                'pending' => (int)($statsRow['pending'] ?? 0),
+                'overdue' => (int)($statsRow['overdue'] ?? 0),
+                'closed' => (int)($statsRow['closed'] ?? 0)
+            ];
+        }
+
+        $historyRes = $conn->query(
+            'SELECT referral_id, status, remarks, outcome, followed_up_by, followed_up_at
+             FROM clinic_referral_followups
+             ORDER BY followed_up_at DESC, id DESC'
+        );
+        if ($historyRes) {
+            while ($historyRow = $historyRes->fetch_assoc()) {
+                $referralFollowups[(int)$historyRow['referral_id']][] = $historyRow;
+            }
+        }
+    }
 } catch (Throwable $ex) {
     error_log('Clinic operations fetch error: ' . $ex->getMessage());
     $message = $message ?: 'Some operational tables are not yet initialized in the database.';
@@ -220,7 +321,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Passes, Referrals &amp; Incidents - SHRCMS</title>
+    <title><?= $view === 'passes' ? 'Clinic Passes' : ($view === 'referrals' ? 'Clinic Referrals' : 'Clinic Incidents') ?> - SHRCMS</title>
     <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
     <link rel="stylesheet" href="../../css/staff-dashboard.css?v=20261115-staff-admin-alignment">
     <link rel="stylesheet" href="../../css/consultation.css?v=20261114-icons">
@@ -235,8 +336,11 @@ try {
         <nav class="staff-nav">
             <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
             <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
-            <a href="clinic_operations.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Passes, Referrals &amp; Incidents</a>
+            <a href="clinic_operations.php?view=passes" class="<?= $view === 'passes' ? 'active' : '' ?>"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Clinic Passes</a>
+            <a href="clinic_operations.php?view=referrals" class="<?= $view === 'referrals' ? 'active' : '' ?>"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Referrals</a>
+            <a href="clinic_operations.php?view=incidents" class="<?= $view === 'incidents' ? 'active' : '' ?>"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Incidents</a>
             <a href="health_documentation.php"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
+            <a href="medical_examinations.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medical Examinations</a>
             <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
             <a href="medicine_inventory.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medicine Inventory</a>
             <p class="sidebar-label">REPORTS</p>
@@ -249,8 +353,13 @@ try {
         <header class="staff-header">
             <div>
                 <p class="page-eyebrow">CLINIC OPERATIONS</p>
-                <h1>Clinic Passes, Referrals &amp; First-Aid Incidents</h1>
-                <p class="header-subtitle">Manage student clinic passes/return-to-class tracking, referrals, and campus first-aid incident logs.</p>
+                <h1><?= $view === 'passes' ? 'Clinic Passes' : ($view === 'referrals' ? 'Clinic Referrals' : 'Incident &amp; First-Aid') ?></h1>
+                <p class="header-subtitle"><?= $view === 'passes' ? 'Issue clinic passes and track return-to-class status.' : ($view === 'referrals' ? 'Manage external referrals and follow-up actions.' : 'Document campus incidents and first-aid care.') ?></p>
+                <nav class="clinic-operation-header-actions" aria-label="Clinic operation sections">
+                    <a href="clinic_operations.php?view=passes" class="<?= $view === 'passes' ? 'active' : '' ?>">Clinic Passes</a>
+                    <a href="clinic_operations.php?view=referrals" class="<?= $view === 'referrals' ? 'active' : '' ?>">Referrals</a>
+                    <a href="clinic_operations.php?view=incidents" class="<?= $view === 'incidents' ? 'active' : '' ?>">Incidents</a>
+                </nav>
             </div>
             <div class="staff-user">
                 <img src="../../image/logo2.png" alt="Staff profile">
@@ -265,6 +374,7 @@ try {
             </div>
         <?php endif; ?>
 
+        <?php if ($view === 'passes'): ?>
         <!-- CLINIC PASSES -->
         <section class="consultation-panel">
             <h2>Clinic Pass &amp; Return-to-Class</h2>
@@ -334,10 +444,17 @@ try {
                 </table>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($view === 'referrals'): ?>
         <!-- REFERRALS -->
         <section class="consultation-panel">
             <h2>Referral Management &amp; Follow-Up</h2>
+            <div class="referral-tracking-stats">
+                <article><span>Pending Follow-Up</span><strong><?= number_format($referralStats['pending']) ?></strong></article>
+                <article><span>Overdue</span><strong><?= number_format($referralStats['overdue']) ?></strong></article>
+                <article><span>Closed</span><strong><?= number_format($referralStats['closed']) ?></strong></article>
+            </div>
             <form method="POST" action="clinic_operations.php" class="consultation-form">
                 <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
                 <input type="hidden" name="action" value="add_referral">
@@ -361,6 +478,10 @@ try {
                     <div class="consultation-field full-width">
                         <label><input type="checkbox" name="action_required" value="1" checked> Follow-up action required</label>
                     </div>
+                    <div class="consultation-field">
+                        <label>Follow-Up Due Date</label>
+                        <input type="date" name="follow_up_due_date" value="<?= e(date('Y-m-d', strtotime('+7 days'))) ?>">
+                    </div>
                 </div>
                 <div class="consultation-form-footer">
                     <button type="submit" class="consultation-submit">Save Referral</button>
@@ -374,11 +495,37 @@ try {
                     </thead>
                     <tbody>
                         <?php if ($referrals): foreach ($referrals as $r): ?>
+                            <?php
+                            $isClosed = in_array($r['follow_up_status'], ['Closed', 'No Further Action Needed'], true);
+                            $isOverdue = (
+                                !$isClosed &&
+                                (int)$r['action_required'] === 1 &&
+                                !empty($r['follow_up_due_date']) &&
+                                $r['follow_up_due_date'] < date('Y-m-d')
+                            );
+                            ?>
                             <tr>
                                 <td><?= e(date('M j, Y', strtotime($r['referral_date']))) ?></td>
                                 <td><strong><?= e($r['fullname'] ?: $r['student_id_no']) ?></strong><br><small><?= e($r['student_id_no']) ?></small></td>
                                 <td><strong><?= e($r['destination']) ?>:</strong> <?= e($r['reason']) ?></td>
-                                <td><?= e($r['follow_up_status']) ?><?= !empty($r['follow_up_remarks']) ? '<br><small>' . e($r['follow_up_remarks']) . '</small>' : '' ?></td>
+                                <td>
+                                    <?= e($r['follow_up_status']) ?>
+                                    <?php if ($isOverdue): ?><br><span class="reason-tag" style="color:#991b1b;background:#fee2e2;">Overdue</span><?php endif; ?>
+                                    <?php if (!empty($r['follow_up_due_date'])): ?><br><small>Due <?= e(date('M j, Y', strtotime($r['follow_up_due_date']))) ?></small><?php endif; ?>
+                                    <?= !empty($r['follow_up_remarks']) ? '<br><small>' . e($r['follow_up_remarks']) . '</small>' : '' ?>
+                                    <?php if (!empty($referralFollowups[(int)$r['id']])): ?>
+                                        <details class="referral-history"><summary>Follow-Up History (<?= count($referralFollowups[(int)$r['id']]) ?>)</summary>
+                                            <?php foreach ($referralFollowups[(int)$r['id']] as $followup): ?>
+                                                <div>
+                                                    <strong><?= e($followup['status']) ?></strong>
+                                                    <small><?= e(date('M j, Y g:i A', strtotime($followup['followed_up_at']))) ?> · <?= e($followup['followed_up_by'] ?: 'Clinic Staff') ?></small>
+                                                    <?= $followup['remarks'] !== '' ? '<p>' . e($followup['remarks']) . '</p>' : '' ?>
+                                                    <?= $followup['outcome'] !== '' ? '<p><b>Outcome:</b> ' . e($followup['outcome']) . '</p>' : '' ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </details>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <form method="POST" action="clinic_operations.php" style="display:flex; gap:6px; flex-wrap:wrap;">
                                         <input type="hidden" name="csrf_token" value="<?= e($csrf) ?>">
@@ -388,8 +535,10 @@ try {
                                             <option value="Pending Follow-Up" <?= $r['follow_up_status'] === 'Pending Follow-Up' ? 'selected' : '' ?>>Pending Follow-Up</option>
                                             <option value="Student Checked In" <?= $r['follow_up_status'] === 'Student Checked In' ? 'selected' : '' ?>>Student Checked In</option>
                                             <option value="Closed" <?= $r['follow_up_status'] === 'Closed' ? 'selected' : '' ?>>Closed</option>
+                                            <option value="No Further Action Needed" <?= $r['follow_up_status'] === 'No Further Action Needed' ? 'selected' : '' ?>>No Further Action Needed</option>
                                         </select>
                                         <input type="text" name="follow_up_remarks" placeholder="Follow-up note" value="<?= e($r['follow_up_remarks'] ?? '') ?>">
+                                        <input type="text" name="follow_up_outcome" placeholder="Outcome" maxlength="2000" value="<?= e($r['follow_up_outcome'] ?? '') ?>">
                                         <button type="submit" class="consultation-search-button">Update</button>
                                     </form>
                                 </td>
@@ -401,7 +550,9 @@ try {
                 </table>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($view === 'incidents'): ?>
         <!-- INCIDENT & FIRST-AID -->
         <section class="consultation-panel">
             <h2>Incident &amp; First-Aid Documentation</h2>
@@ -479,6 +630,7 @@ try {
                 </table>
             </div>
         </section>
+        <?php endif; ?>
     </main>
 </body>
 </html>

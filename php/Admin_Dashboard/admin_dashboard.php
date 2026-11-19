@@ -11,6 +11,8 @@ if (
 }
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Administrator'], '../login.php');
 $conn->set_charset('utf8mb4');
 
 function e($value): string
@@ -163,6 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $message = trim($_GET['message'] ?? '');
 $messageType = ($_GET['type'] ?? '') === 'error' ? 'error' : 'success';
 $username = $_SESSION['admin_username'] ?? 'Administrator';
+rbacLog($conn, 'view', 'Admin Dashboard', 'Page', 'admin_dashboard', 'Administrator dashboard accessed');
 $dashboardError = '';
 $teacherPermissionTablesReady = false;
 $stats = [

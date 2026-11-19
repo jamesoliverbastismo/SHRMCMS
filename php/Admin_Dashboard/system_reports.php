@@ -11,6 +11,8 @@ if (
 }
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Administrator'], '../login.php');
 
 $conn->set_charset('utf8mb4');
 
@@ -57,6 +59,22 @@ if (!in_array($reportType, $allowedReports, true)) {
 $students = [];
 $consultations = [];
 $reportError = '';
+$auditRows = [];
+
+rbacEnsureAuditTable($conn);
+rbacLog($conn, 'view', 'System Reports', 'Report', $reportType, 'Administrator accessed a system report');
+$auditResult = @$conn->query(
+    'SELECT id, actor_name, actor_role, actor_user_id, action, module,
+            record_type, record_id, details, ip_address, created_at
+     FROM audit_trail
+     ORDER BY created_at DESC, id DESC
+     LIMIT 200'
+);
+if ($auditResult) {
+    while ($auditRow = $auditResult->fetch_assoc()) {
+        $auditRows[] = $auditRow;
+    }
+}
 
 // Student report.
 if ($reportType === 'students') {
@@ -368,6 +386,50 @@ $generatedAt = date('F d, Y h:i A');
                     </table>
                 </div>
             <?php endif; ?>
+        </section>
+
+        <section class="report-panel" id="audit-trail">
+            <div class="report-panel-heading">
+                <div>
+                    <h3>Audit Trail</h3>
+                    <p>Recent account access and record changes. The trail is append-only.</p>
+                </div>
+                <span><?= number_format(count($auditRows)) ?> event(s)</span>
+            </div>
+            <div class="report-table-wrap">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Date / Time</th>
+                            <th>Actor</th>
+                            <th>Role</th>
+                            <th>Action</th>
+                            <th>Module</th>
+                            <th>Record</th>
+                            <th>Details</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if ($auditRows): ?>
+                        <?php foreach ($auditRows as $audit): ?>
+                            <tr>
+                                <td><?= e(date('M d, Y h:i A', strtotime($audit['created_at']))) ?></td>
+                                <td><?= e($audit['actor_name']) ?></td>
+                                <td><?= e($audit['actor_role']) ?></td>
+                                <td><?= e($audit['action']) ?></td>
+                                <td><?= e($audit['module']) ?></td>
+                                <td><?= e(($audit['record_type'] ?: '—') . ($audit['record_id'] ? ' #' . $audit['record_id'] : '')) ?></td>
+                                <td><?= e($audit['details'] ?: '—') ?></td>
+                                <td><?= e($audit['ip_address'] ?: '—') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="8" class="report-empty">No audit events have been recorded.</td></tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </section>
     </div>
 

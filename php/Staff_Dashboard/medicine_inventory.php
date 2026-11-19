@@ -10,6 +10,8 @@ if (!empty($_SESSION['must_change_password'])) {
 }
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Staff', 'Administrator'], '../login.php');
 
 if (
     !isset($_SESSION['admin_logged_in']) ||
@@ -238,7 +240,8 @@ $stats = [
     'total_items' => 0,
     'total_units' => 0,
     'low_stock' => 0,
-    'expired' => 0
+    'expired' => 0,
+    'expiring_soon' => 0
 ];
 
 $medicines = [];
@@ -249,7 +252,8 @@ try {
             COUNT(*) AS total_items,
             COALESCE(SUM(quantity), 0) AS total_units,
             COALESCE(SUM(CASE WHEN quantity <= reorder_level THEN 1 ELSE 0 END), 0) AS low_stock,
-            COALESCE(SUM(CASE WHEN expiration_date IS NOT NULL AND expiration_date < CURDATE() THEN 1 ELSE 0 END), 0) AS expired
+            COALESCE(SUM(CASE WHEN expiration_date IS NOT NULL AND expiration_date < CURDATE() THEN 1 ELSE 0 END), 0) AS expired,
+            COALESCE(SUM(CASE WHEN expiration_date IS NOT NULL AND expiration_date >= CURDATE() AND expiration_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END), 0) AS expiring_soon
          FROM medicine_inventory'
     );
     $statRow = $statRes->fetch_assoc();
@@ -257,6 +261,7 @@ try {
     $stats['total_units'] = (int)($statRow['total_units'] ?? 0);
     $stats['low_stock'] = (int)($statRow['low_stock'] ?? 0);
     $stats['expired'] = (int)($statRow['expired'] ?? 0);
+    $stats['expiring_soon'] = (int)($statRow['expiring_soon'] ?? 0);
 
     $sql = 'SELECT * FROM medicine_inventory WHERE 1=1';
     $params = [];
@@ -327,8 +332,11 @@ $soonLimitStr = date('Y-m-d', strtotime('+30 days'));
         <nav class="staff-nav">
             <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
             <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
-            <a href="clinic_operations.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Passes, Referrals &amp; Incidents</a>
+            <a href="clinic_operations.php?view=passes"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Clinic Passes</a>
+            <a href="clinic_operations.php?view=referrals"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Referrals</a>
+            <a href="clinic_operations.php?view=incidents"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Incidents</a>
             <a href="health_documentation.php"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
+            <a href="medical_examinations.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medical Examinations</a>
             <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
             <a href="medicine_inventory.php">
                 <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medicine Inventory
@@ -371,6 +379,26 @@ $soonLimitStr = date('Y-m-d', strtotime('+30 days'));
             </div>
         <?php endif; ?>
 
+        <?php if ($stats['low_stock'] > 0 || $stats['expiring_soon'] > 0 || $stats['expired'] > 0): ?>
+            <section class="inventory-alert-panel" role="alert" aria-label="Inventory alerts">
+                <div>
+                    <strong>Inventory Attention Required</strong>
+                    <p>Review the affected medicine and supply items before dispensing or restocking.</p>
+                </div>
+                <div class="inventory-alert-actions">
+                    <?php if ($stats['low_stock'] > 0): ?>
+                        <a href="medicine_inventory.php?status=low_stock"><?= number_format($stats['low_stock']) ?> Low Stock</a>
+                    <?php endif; ?>
+                    <?php if ($stats['expiring_soon'] > 0): ?>
+                        <a href="medicine_inventory.php?status=expiring_soon"><?= number_format($stats['expiring_soon']) ?> Expiring in 30 Days</a>
+                    <?php endif; ?>
+                    <?php if ($stats['expired'] > 0): ?>
+                        <a href="medicine_inventory.php?status=expired"><?= number_format($stats['expired']) ?> Expired</a>
+                    <?php endif; ?>
+                </div>
+            </section>
+        <?php endif; ?>
+
         <section class="consultation-stats">
             <article class="consultation-stat">
                 <span class="stat-icon"><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span>
@@ -393,9 +421,18 @@ $soonLimitStr = date('Y-m-d', strtotime('+30 days'));
             <article class="consultation-stat">
                 <span class="stat-icon"><img class="ui-icon" src="../../image/icon-clock.svg" alt="" aria-hidden="true"></span>
                 <div>
-                    <p>Low Stock / Expired</p>
-                    <h2><?= number_format($stats['low_stock']) ?> / <?= number_format($stats['expired']) ?></h2>
-                    <small>At or below reorder level / past expiry</small>
+                    <p>Low Stock / Expiring Soon</p>
+                    <h2><?= number_format($stats['low_stock']) ?> / <?= number_format($stats['expiring_soon']) ?></h2>
+                    <small>At or below reorder level / within 30 days</small>
+                </div>
+            </article>
+
+            <article class="consultation-stat">
+                <span class="stat-icon"><img class="ui-icon" src="../../image/icon-clock.svg" alt="" aria-hidden="true"></span>
+                <div>
+                    <p>Expired Items</p>
+                    <h2><?= number_format($stats['expired']) ?></h2>
+                    <small>Past expiration date</small>
                 </div>
             </article>
         </section>
@@ -543,11 +580,11 @@ $soonLimitStr = date('Y-m-d', strtotime('+30 days'));
                                     <td>
                                         <div><?= $exp !== '' ? e(date('M d, Y', strtotime($exp))) : 'No expiry date' ?></div>
                                         <?php if ($isExpired): ?>
-                                            <span class="reason-tag">Expired</span>
+                                            <span class="reason-tag inventory-status-expired">Expired</span>
                                         <?php elseif ($isExpiringSoon): ?>
-                                            <span class="reason-tag">Expiring Soon</span>
+                                            <span class="reason-tag inventory-status-soon">Expiring Soon</span>
                                         <?php elseif ($isLowStock): ?>
-                                            <span class="reason-tag">Low Stock</span>
+                                            <span class="reason-tag inventory-status-low">Low Stock</span>
                                         <?php else: ?>
                                             <small class="student-number">Normal</small>
                                         <?php endif; ?>

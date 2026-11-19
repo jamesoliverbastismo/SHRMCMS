@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../rbac_audit.php';
+
 function requireStudentSession(): void
 {
     if (!empty($_SESSION['must_change_password'])) {
@@ -8,14 +10,7 @@ function requireStudentSession(): void
         exit();
     }
 
-    if (
-        !isset($_SESSION['admin_logged_in']) ||
-        $_SESSION['admin_logged_in'] !== true ||
-        ($_SESSION['user_role'] ?? '') !== 'Student'
-    ) {
-        header('Location: ../login.php');
-        exit();
-    }
+    rbacRequireRole(['Student'], '../login.php');
 }
 
 function e($value): string

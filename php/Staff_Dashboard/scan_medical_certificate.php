@@ -1,18 +1,13 @@
 <?php
 session_start();
+require_once __DIR__ . '/../rbac_audit.php';
 
 if (!empty($_SESSION['must_change_password'])) {
     header('Location: ../change_initial_password.php');
     exit();
 }
 
-if (
-    ($_SESSION['admin_logged_in'] ?? false) !== true ||
-    !in_array($_SESSION['user_role'] ?? '', ['Staff', 'Administrator'], true)
-) {
-    header('Location: ../login.php');
-    exit();
-}
+rbacRequireRole(['Staff', 'Administrator'], '../login.php');
 
 function e($value): string
 {

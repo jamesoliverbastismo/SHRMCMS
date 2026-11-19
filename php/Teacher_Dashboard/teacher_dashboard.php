@@ -15,6 +15,8 @@ if (
 }
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Teacher'], '../login.php');
 $conn->set_charset('utf8mb4');
 
 function e($value): string

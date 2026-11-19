@@ -5,6 +5,7 @@ error_reporting(E_ALL);
 
 session_start();
 require_once 'db.php';
+require_once __DIR__ . '/rbac_audit.php';
 
 function needsInitialPasswordChange(mysqli $conn, string $accountType, int $accountId): ?bool
 {
@@ -135,6 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['admin_username'] = $admin['username'] ?? $admin['email'] ?? 'Administrator';
                         $_SESSION['admin_id_no'] = $admin['admin_id_no'];
                         $_SESSION['user_role'] = 'Administrator';
+                        $_SESSION['user_id'] = (int)$admin['id'];
+                        rbacLog($conn, 'login', 'Authentication', 'Session', session_id(), 'Administrator logged in');
 
                         header('Location: Admin_Dashboard/admin_dashboard.php');
                         exit;
@@ -238,6 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $_SESSION['auth_account_type'] = 'teacher';
                                     $_SESSION['auth_account_id'] = $teacherId;
                                     $_SESSION['must_change_password'] = $mustChangePassword;
+                                    rbacLog($conn, 'login', 'Authentication', 'Session', session_id(), 'Teacher logged in');
 
                                     if ($mustChangePassword) {
                                         header('Location: change_initial_password.php');
@@ -360,6 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $_SESSION['auth_account_type'] = 'staff';
                                     $_SESSION['auth_account_id'] = $staffId;
                                     $_SESSION['must_change_password'] = $mustChangePassword;
+                                    rbacLog($conn, 'login', 'Authentication', 'Session', session_id(), 'Staff or Teacher logged in');
 
                                     if ($mustChangePassword) {
                                         header('Location: change_initial_password.php');
@@ -616,6 +621,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $_SESSION['auth_account_type'] = 'student';
                                     $_SESSION['auth_account_id'] = $passwordCheckId;
                                     $_SESSION['must_change_password'] = $mustChangePassword;
+                                    rbacLog($conn, 'login', 'Authentication', 'Session', session_id(), 'Student logged in');
 
                                     if ($mustChangePassword) {
                                         header('Location: change_initial_password.php');

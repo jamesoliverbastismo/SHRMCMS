@@ -4,6 +4,8 @@ error_reporting(E_ALL);
 
 session_start();
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Administrator'], '../login.php');
 
 if (
     !isset($_SESSION['admin_logged_in']) ||
@@ -367,6 +369,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $conn->commit();
 
+            rbacLog(
+                $conn,
+                $id > 0 ? 'update' : 'create',
+                'User Management',
+                'User',
+                (string)$userId,
+                $role . ' account ' . ($id > 0 ? 'updated' : 'created')
+            );
+
             $msg = $id > 0
                 ? 'User account updated successfully.'
                 : "New {$role} account created successfully." . ($generatedPassword !== null ? " Generated Password: {$generatedPassword}" : '');
@@ -394,6 +405,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $changed = $stmt->affected_rows;
         $stmt->close();
+
+        rbacLog($conn, 'status_change', 'User Management', 'User', (string)$id, 'Account status activated or deactivated');
 
         redirectUsers(
             $changed > 0 ? 'Account status updated.' : 'Account not found or status unchanged.',
@@ -432,6 +445,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $deleted = $delete->affected_rows;
             $delete->close();
             $conn->commit();
+
+            rbacLog($conn, 'delete', 'User Management', 'User', (string)$id, 'User account deleted');
 
             redirectUsers(
                 $deleted ? 'User account deleted successfully.' : 'Could not delete the account.',
@@ -670,6 +685,24 @@ $staffUsers = (int)($conn->query("SELECT COUNT(*) AS total FROM users WHERE role
                             <button class="um-btn um-light" type="reset">Clear Form</button>
                         <?php endif; ?>
                     </div>
+                </form>
+            </section>
+
+            <section class="um-panel" id="csv-import">
+                <h2 class="um-heading">Upload User CSV</h2>
+                <p class="um-subtitle">
+                    Create or update accounts in bulk. The <strong>ID</strong> becomes the login ID and <strong>birthdate</strong> becomes the initial password.
+                    Accounts imported from the CSV must change their password after first login.
+                </p>
+                <div class="um-csv-example">
+                    id,name,role,birthdate,email,course_year<br>
+                    2026-0001,Juan Dela Cruz,Student,2005-06-15,,BSIT-1
+                </div>
+                <form action="import_user_roster.php" method="POST" enctype="multipart/form-data" class="um-roster-form">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                    <label for="roster_csv">CSV File</label>
+                    <input type="file" id="roster_csv" name="roster_csv" accept=".csv,text/csv" required>
+                    <button type="submit" class="um-btn um-primary">Upload and Create Users</button>
                 </form>
             </section>
 

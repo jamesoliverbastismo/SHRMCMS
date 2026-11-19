@@ -14,6 +14,8 @@ if (
 }
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Administrator'], '../login.php');
 $conn->set_charset('utf8mb4');
 
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Administrator') {

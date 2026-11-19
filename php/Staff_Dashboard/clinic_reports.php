@@ -6,6 +6,8 @@ if (!empty($_SESSION['must_change_password'])) {
 }
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../rbac_audit.php';
+rbacRequireRole(['Staff', 'Administrator'], '../login.php');
 
 if (
     !isset($_SESSION['admin_logged_in']) ||
@@ -132,6 +134,14 @@ $summary = [
 
 $reportRows = [];
 $reportError = '';
+$visitTrend = [];
+$healthTrend = [];
+$commonReasons = [];
+$measurementSummary = [
+    'height' => null,
+    'weight' => null,
+    'temperature' => null
+];
 
 try {
     $rows = fetchRows(
@@ -189,6 +199,62 @@ try {
     );
     $summary['equipment_types'] = (int)$rows[0]['total_types'];
     $summary['equipment_units'] = (int)$rows[0]['total_units'];
+
+    $visitTrend = fetchRows(
+        $conn,
+        "SELECT consultation_date AS trend_date, COUNT(*) AS total
+         FROM consultations
+         WHERE consultation_date BETWEEN ? AND ?
+         GROUP BY consultation_date
+         ORDER BY consultation_date ASC",
+        'ss',
+        [$startDate, $endDate]
+    );
+
+    $healthTrend = fetchRows(
+        $conn,
+        "SELECT
+            examination_date AS trend_date,
+            COUNT(*) AS total,
+            ROUND(AVG(height_cm), 2) AS average_height,
+            ROUND(AVG(weight_kg), 2) AS average_weight,
+            ROUND(AVG(temperature), 1) AS average_temperature
+         FROM health_documentation
+         WHERE examination_date BETWEEN ? AND ?
+         GROUP BY examination_date
+         ORDER BY examination_date ASC",
+        'ss',
+        [$startDate, $endDate]
+    );
+
+    $commonReasons = fetchRows(
+        $conn,
+        "SELECT reason, COUNT(*) AS total
+         FROM consultations
+         WHERE consultation_date BETWEEN ? AND ?
+         GROUP BY reason
+         ORDER BY total DESC, reason ASC
+         LIMIT 5",
+        'ss',
+        [$startDate, $endDate]
+    );
+
+    $measurementRows = fetchRows(
+        $conn,
+        "SELECT
+            ROUND(AVG(height_cm), 2) AS average_height,
+            ROUND(AVG(weight_kg), 2) AS average_weight,
+            ROUND(AVG(temperature), 1) AS average_temperature
+         FROM health_documentation
+         WHERE examination_date BETWEEN ? AND ?",
+        'ss',
+        [$startDate, $endDate]
+    );
+    if ($measurementRows) {
+        $measurementSummary['height'] = $measurementRows[0]['average_height'];
+        $measurementSummary['weight'] = $measurementRows[0]['average_weight'];
+        $measurementSummary['temperature'] = $measurementRows[0]['average_temperature'];
+    }
 
     if ($reportType === 'overview' || $reportType === 'visits') {
         $reportRows = fetchRows(
@@ -356,8 +422,11 @@ try {
         <nav class="staff-nav">
             <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
             <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
-            <a href="clinic_operations.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Passes, Referrals &amp; Incidents</a>
+            <a href="clinic_operations.php?view=passes"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Clinic Passes</a>
+            <a href="clinic_operations.php?view=referrals"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Referrals</a>
+            <a href="clinic_operations.php?view=incidents"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Incidents</a>
             <a href="health_documentation.php"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
+            <a href="medical_examinations.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medical Examinations</a>
             <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
             <a href="medicine_inventory.php">
                 <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medicine Inventory
@@ -444,6 +513,103 @@ try {
                     <?= $summary['equipment_types'] ?> equipment types registered
                 </small>
             </article>
+        </section>
+
+        <section class="cr-panel cr-trends">
+            <div class="cr-heading">
+                <div>
+                    <h2>Clinic Visit &amp; Health Trends</h2>
+                    <p>Summaries calculated only from recorded visits and health examinations in the selected date range.</p>
+                </div>
+            </div>
+
+            <div class="cr-trend-grid">
+                <article class="cr-trend-card">
+                    <div class="cr-trend-heading">
+                        <h3>Clinic Visit Trend</h3>
+                        <span><?= number_format($summary['visits']) ?> visits</span>
+                    </div>
+                    <?php
+                    $visitMax = 0;
+                    foreach ($visitTrend as $trend) {
+                        $visitMax = max($visitMax, (int)$trend['total']);
+                    }
+                    ?>
+                    <?php if ($visitTrend): ?>
+                        <div class="cr-trend-bars" aria-label="Clinic visits by date">
+                            <?php foreach ($visitTrend as $trend):
+                                $count = (int)$trend['total'];
+                                $width = $visitMax > 0 ? max(8, (int)round(($count / $visitMax) * 100)) : 0;
+                            ?>
+                                <div class="cr-trend-row">
+                                    <span><?= e(date('M d', strtotime($trend['trend_date']))) ?></span>
+                                    <div class="cr-trend-track"><div class="cr-trend-fill" style="width: <?= $width ?>%"></div></div>
+                                    <strong><?= $count ?></strong>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="cr-trend-empty">No clinic visits recorded in this date range.</p>
+                    <?php endif; ?>
+                </article>
+
+                <article class="cr-trend-card">
+                    <div class="cr-trend-heading">
+                        <h3>Health Examination Trend</h3>
+                        <span><?= number_format($summary['examinations']) ?> examinations</span>
+                    </div>
+                    <?php
+                    $healthMax = 0;
+                    foreach ($healthTrend as $trend) {
+                        $healthMax = max($healthMax, (int)$trend['total']);
+                    }
+                    ?>
+                    <?php if ($healthTrend): ?>
+                        <div class="cr-trend-bars" aria-label="Health examinations by date">
+                            <?php foreach ($healthTrend as $trend):
+                                $count = (int)$trend['total'];
+                                $width = $healthMax > 0 ? max(8, (int)round(($count / $healthMax) * 100)) : 0;
+                            ?>
+                                <div class="cr-trend-row">
+                                    <span><?= e(date('M d', strtotime($trend['trend_date']))) ?></span>
+                                    <div class="cr-trend-track cr-health-track"><div class="cr-trend-fill cr-health-fill" style="width: <?= $width ?>%"></div></div>
+                                    <strong><?= $count ?></strong>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="cr-trend-empty">No health examinations recorded in this date range.</p>
+                    <?php endif; ?>
+                </article>
+            </div>
+
+            <div class="cr-health-summary">
+                <article>
+                    <span>Average Height</span>
+                    <strong><?= $measurementSummary['height'] !== null ? e($measurementSummary['height']) . ' cm' : 'No data' ?></strong>
+                </article>
+                <article>
+                    <span>Average Weight</span>
+                    <strong><?= $measurementSummary['weight'] !== null ? e($measurementSummary['weight']) . ' kg' : 'No data' ?></strong>
+                </article>
+                <article>
+                    <span>Average Temperature</span>
+                    <strong><?= $measurementSummary['temperature'] !== null ? e($measurementSummary['temperature']) . ' °C' : 'No data' ?></strong>
+                </article>
+            </div>
+
+            <div class="cr-reasons">
+                <h3>Most Recorded Visit Reasons</h3>
+                <?php if ($commonReasons): ?>
+                    <ol>
+                        <?php foreach ($commonReasons as $reason): ?>
+                            <li><span><?= e($reason['reason'] ?: 'Not specified') ?></span><strong><?= (int)$reason['total'] ?></strong></li>
+                        <?php endforeach; ?>
+                    </ol>
+                <?php else: ?>
+                    <p class="cr-trend-empty">No visit reasons recorded in this date range.</p>
+                <?php endif; ?>
+            </div>
         </section>
 
         <section class="cr-panel">

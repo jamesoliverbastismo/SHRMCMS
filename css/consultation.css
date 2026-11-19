@@ -501,6 +501,65 @@
     font-size: 11px;
 }
 
+.referral-tracking-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.referral-tracking-stats article {
+    padding: 14px;
+    border: 1px solid #dfe6e1;
+    background: #fbfcfb;
+}
+
+.referral-tracking-stats span,
+.referral-tracking-stats strong {
+    display: block;
+}
+
+.referral-tracking-stats span {
+    color: #758078;
+    font-size: 12px;
+}
+
+.referral-tracking-stats strong {
+    margin-top: 6px;
+    color: #183c2b;
+    font-size: 22px;
+}
+
+.referral-history {
+    margin-top: 8px;
+}
+
+.referral-history summary {
+    color: #1768d1;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.referral-history div {
+    margin-top: 8px;
+    padding: 8px;
+    border-left: 3px solid #cbd8cf;
+    background: #f7f9f7;
+}
+
+.referral-history strong,
+.referral-history small,
+.referral-history p {
+    display: block;
+}
+
+.referral-history small,
+.referral-history p {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 11px;
+}
+
 .reason-tag {
     display: inline-block;
     padding: 5px 8px;
@@ -509,6 +568,58 @@
     border-radius: 4px;
     font-size: 11px;
     line-height: 1.5;
+}
+
+.inventory-alert-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+    padding: 16px 18px;
+    border: 1px solid #fecaca;
+    border-left: 5px solid #dc2626;
+    border-radius: 8px;
+    background: #fff7f7;
+    color: #7f1d1d;
+}
+
+.inventory-alert-panel p {
+    margin-top: 4px;
+    color: #991b1b;
+    font-size: 12px;
+}
+
+.reason-tag.inventory-status-expired {
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+.reason-tag.inventory-status-soon {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.reason-tag.inventory-status-low {
+    color: #1d4ed8;
+    background: #dbeafe;
+}
+
+.inventory-alert-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.inventory-alert-actions a {
+    padding: 7px 9px;
+    border: 1px solid #fecaca;
+    border-radius: 5px;
+    background: #fff;
+    color: #991b1b;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
 }
 
 .remarks-cell {

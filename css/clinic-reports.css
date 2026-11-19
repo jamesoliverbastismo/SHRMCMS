@@ -217,6 +217,139 @@
     color: #244e37;
 }
 
+.cr-trend-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.cr-trend-card,
+.cr-health-summary article,
+.cr-reasons {
+    border: 1px solid #e5eae6;
+    background: #fbfcfb;
+}
+
+.cr-trend-card {
+    min-width: 0;
+    padding: 18px;
+}
+
+.cr-trend-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.cr-trend-heading h3,
+.cr-reasons h3 {
+    margin: 0;
+    color: #183c2b;
+    font-size: 15px;
+}
+
+.cr-trend-heading span {
+    color: #758078;
+    font-size: 12px;
+}
+
+.cr-trend-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.cr-trend-row {
+    display: grid;
+    grid-template-columns: 48px minmax(60px, 1fr) 24px;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.cr-trend-row span,
+.cr-trend-row strong {
+    color: #5d685f;
+}
+
+.cr-trend-track {
+    height: 8px;
+    overflow: hidden;
+    background: #dfe8e2;
+}
+
+.cr-trend-fill {
+    height: 100%;
+    background: #397454;
+}
+
+.cr-health-fill {
+    background: #2873dc;
+}
+
+.cr-trend-empty {
+    color: #758078;
+    font-size: 12px;
+}
+
+.cr-health-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.cr-health-summary article {
+    padding: 14px;
+}
+
+.cr-health-summary span {
+    display: block;
+    color: #758078;
+    font-size: 11px;
+}
+
+.cr-health-summary strong {
+    display: block;
+    margin-top: 6px;
+    color: #183c2b;
+    font-size: 16px;
+}
+
+.cr-reasons {
+    margin-top: 16px;
+    padding: 18px;
+}
+
+.cr-reasons ol {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cr-reasons li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #edf1ed;
+    color: #4e5b52;
+    font-size: 12px;
+}
+
+.cr-reasons li:last-child {
+    border-bottom: 0;
+}
+
+@media (max-width: 900px) {
+    .cr-trend-grid,
+    .cr-health-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 1100px) {
     .cr-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));

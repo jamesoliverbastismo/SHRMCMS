@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Nov 19, 2026 at 02:59 AM
+-- Generation Time: Nov 19, 2026 at 09:14 AM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -47,6 +47,37 @@ INSERT INTO `admin` (`id`, `admin_id_no`, `username`, `email`, `password`, `crea
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `audit_trail`
+--
+
+CREATE TABLE `audit_trail` (
+  `id` int NOT NULL,
+  `actor_name` varchar(100) NOT NULL,
+  `actor_role` varchar(50) NOT NULL,
+  `actor_user_id` int DEFAULT NULL,
+  `action` varchar(100) NOT NULL,
+  `module` varchar(100) NOT NULL,
+  `record_type` varchar(100) DEFAULT NULL,
+  `record_id` varchar(100) DEFAULT NULL,
+  `details` text,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `audit_trail`
+--
+
+INSERT INTO `audit_trail` (`id`, `actor_name`, `actor_role`, `actor_user_id`, `action`, `module`, `record_type`, `record_id`, `details`, `ip_address`, `created_at`) VALUES
+(1, 'admin', 'Administrator', 0, 'view', 'System Reports', 'Report', 'overview', 'Administrator accessed a system report', '::1', '2026-11-19 08:54:33'),
+(2, 'admin', 'Administrator', 0, 'view', 'System Reports', 'Report', 'overview', 'Administrator accessed a system report', '::1', '2026-11-19 08:55:09'),
+(3, 'admin', 'Administrator', 0, 'create', 'User Management', 'User', '29', 'Teacher account created', '::1', '2026-11-19 09:07:36'),
+(4, 'admin', 'Administrator', 0, 'logout', 'Authentication', 'Session', 'c1c138540583c9b70db84bafd1b2929b', 'User logged out', '::1', '2026-11-19 09:07:48'),
+(5, 'mayshane paran', 'Teacher', 2, 'login', 'Authentication', 'Session', 'fad48aa82bf1d770104b6f757b38b607', 'Teacher logged in', '::1', '2026-11-19 09:08:12');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `clinic_passes`
 --
 
@@ -78,8 +109,28 @@ CREATE TABLE `clinic_referrals` (
   `action_required` tinyint(1) NOT NULL DEFAULT '1',
   `follow_up_remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
   `recorded_by_staff_id` int DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `follow_up_due_date` date DEFAULT NULL,
+  `follow_up_outcome` text COLLATE utf8mb4_general_ci,
+  `follow_up_completed_at` datetime DEFAULT NULL,
+  `last_follow_up_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `clinic_referral_followups`
+--
+
+CREATE TABLE `clinic_referral_followups` (
+  `id` int NOT NULL,
+  `referral_id` int NOT NULL,
+  `status` varchar(60) NOT NULL,
+  `remarks` text,
+  `outcome` text,
+  `followed_up_by` varchar(100) DEFAULT NULL,
+  `followed_up_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -229,6 +280,7 @@ CREATE TABLE `medical_examinations` (
   `student_id` int NOT NULL,
   `student_id_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `examination_date` date NOT NULL,
+  `academic_year` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `height_cm` decimal(5,2) DEFAULT NULL,
   `weight_kg` decimal(5,2) DEFAULT NULL,
   `temperature` decimal(4,1) DEFAULT NULL,
@@ -355,7 +407,7 @@ CREATE TABLE `staff` (
 
 INSERT INTO `staff` (`id`, `staff_id_no`, `password`, `fullname`, `role`, `email`, `id_document`, `created_at`) VALUES
 (1, 'STAFF-0001', '$2y$12$sGBiq12NiW6qFwiO43ztPuY1HPasWZ6tqtLdDHrT/rPmyBUUdVwuy', 'olivia', 'Staff', 'jamesoliverbastismo35@gmail.com', NULL, '2026-10-13 05:19:31'),
-(2, 'STAFF-0002', NULL, 'James oliver Bastismo', 'Staff', 'jamesoliverbastismo188@gmail.com', NULL, '2026-10-13 05:47:41'),
+(2, 'STAFF-0002', '$2y$12$w06HW0BU.RAXVM3kvDn9TukLv3CEn2HtdKid/rqVr3MqIC0xoi9mi', 'James oliver Bastismo', 'Staff', 'jamesoliverbastismo188@gmail.com', NULL, '2026-10-13 05:47:41'),
 (4, 'STAFF-0004', NULL, 'dutctmilk', 'Staff', 'dutchmilk@gmail.com', NULL, '2026-10-31 01:24:02');
 
 -- --------------------------------------------------------
@@ -378,15 +430,53 @@ CREATE TABLE `students` (
   `user_id` int DEFAULT NULL,
   `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `id_document` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL
+  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `medical_history` text COLLATE utf8mb4_general_ci,
+  `current_medications` text COLLATE utf8mb4_general_ci,
+  `immunization_information` text COLLATE utf8mb4_general_ci,
+  `emergency_contact_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `emergency_contact_relationship` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `emergency_contact_number` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `students`
 --
 
-INSERT INTO `students` (`id`, `student_id_no`, `fullname`, `age`, `gender`, `course_year`, `contact`, `allergies`, `known_conditions`, `created_at`, `user_id`, `email`, `id_document`, `password`) VALUES
-(10, 'SCC-22-00022156', 'Kisha Nicole Paran', NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-17 08:27:10', 27, NULL, NULL, '111');
+INSERT INTO `students` (`id`, `student_id_no`, `fullname`, `age`, `gender`, `course_year`, `contact`, `allergies`, `known_conditions`, `created_at`, `user_id`, `email`, `id_document`, `password`, `medical_history`, `current_medications`, `immunization_information`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_number`) VALUES
+(10, 'SCC-22-00022156', 'Kisha Nicole Paran', NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-17 08:27:10', 27, NULL, NULL, '111', NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_profile_documents`
+--
+
+CREATE TABLE `student_profile_documents` (
+  `id` int NOT NULL,
+  `student_id` int NOT NULL,
+  `document_name` varchar(255) NOT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `uploaded_by` varchar(100) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `student_profile_history`
+--
+
+CREATE TABLE `student_profile_history` (
+  `id` int NOT NULL,
+  `student_id` int NOT NULL,
+  `student_id_no` varchar(50) NOT NULL,
+  `snapshot_json` longtext NOT NULL,
+  `changed_by` varchar(100) DEFAULT NULL,
+  `change_note` varchar(255) DEFAULT NULL,
+  `action_type` varchar(20) NOT NULL DEFAULT 'updated',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -435,7 +525,8 @@ CREATE TABLE `teachers` (
 --
 
 INSERT INTO `teachers` (`id`, `teacher_id_no`, `fullname`, `email`, `password`, `id_document`, `status`, `created_at`) VALUES
-(1, 'TEACHER69', 'Alipuyo, Jinks, LPT.', 'jingk@gmail.com', '$2y$12$Sf2HxMEZPtyrAJ7nZjPaq.wTlgOCiSPnBJJ8u2nTxbrwGm6d15Z.m', NULL, 'Active', '2026-11-19 01:48:47');
+(1, 'TEACHER69', 'Alipuyo, Jinks, LPT.', 'jingk@gmail.com', '$2y$12$Sf2HxMEZPtyrAJ7nZjPaq.wTlgOCiSPnBJJ8u2nTxbrwGm6d15Z.m', NULL, 'Active', '2026-11-19 01:48:47'),
+(2, 'TEACHER-0002', 'mayshane paran', 'may@gmail.com', '$2y$12$j0rh4jRQuG6yFYl/Bsffwucnjc0rm/m06rjpBx8qzVwN2n2sMuFFm', NULL, 'Active', '2026-11-19 09:07:36');
 
 -- --------------------------------------------------------
 
@@ -481,7 +572,8 @@ INSERT INTO `users` (`id`, `name`, `email`, `role`, `password`, `status`, `creat
 (10, 'shani', 'kishanicoleparan@gmail.com', 'Staff', '$2y$10$KTDVvtIU7G4LbzrHf6p85e.kXZtK0ZLzVOGmchA53oL3Pix6hi4uG', 'Active', '2026-10-17 03:41:13', NULL),
 (11, 'xian paran', 'xian@gmail.com', 'Student', '$2y$10$g1JoInHjHDlxj.4D.pOHMe41EVJtklcqWnOl73UqvW5zKj7uAVGKy', 'Active', '2026-10-17 08:54:42', NULL),
 (27, 'Kisha Nicole Paran', NULL, 'Student', '$2y$12$bZ2B.kp0jecyKpcftx2Wqel40HNbJ5LOUPH0jrKMBSEw6ahnEnlju', 'Active', '2026-11-17 08:27:10', 'SCC-22-00022156'),
-(28, 'Alipuyo, Jinks, LPT.', 'jingk@gmail.com', 'Teacher', '$2y$12$B2ExIqz2Fjq/bN23TpC2H.C.FoRQkL0rHegDeWtO1txNbPlTwA17C', 'Active', '2026-11-19 01:45:08', NULL);
+(28, 'Alipuyo, Jinks, LPT.', 'jingk@gmail.com', 'Teacher', '$2y$12$B2ExIqz2Fjq/bN23TpC2H.C.FoRQkL0rHegDeWtO1txNbPlTwA17C', 'Active', '2026-11-19 01:45:08', NULL),
+(29, 'mayshane paran', 'may@gmail.com', 'Teacher', '$2y$12$j0rh4jRQuG6yFYl/Bsffwucnjc0rm/m06rjpBx8qzVwN2n2sMuFFm', 'Active', '2026-11-19 09:07:36', NULL);
 
 --
 -- Indexes for dumped tables
@@ -495,6 +587,15 @@ ALTER TABLE `admin`
   ADD UNIQUE KEY `uq_admin_admin_id_no` (`admin_id_no`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Indexes for table `audit_trail`
+--
+ALTER TABLE `audit_trail`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_audit_created` (`created_at`),
+  ADD KEY `idx_audit_actor_role` (`actor_role`),
+  ADD KEY `idx_audit_module` (`module`);
 
 --
 -- Indexes for table `clinic_passes`
@@ -511,6 +612,14 @@ ALTER TABLE `clinic_referrals`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_ref_student` (`student_id_no`),
   ADD KEY `idx_ref_date` (`referral_date`);
+
+--
+-- Indexes for table `clinic_referral_followups`
+--
+ALTER TABLE `clinic_referral_followups`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_referral_followups_referral` (`referral_id`),
+  ADD KEY `idx_referral_followups_date` (`followed_up_at`);
 
 --
 -- Indexes for table `consultations`
@@ -597,6 +706,21 @@ ALTER TABLE `students`
   ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
+-- Indexes for table `student_profile_documents`
+--
+ALTER TABLE `student_profile_documents`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_profile_documents_student` (`student_id`);
+
+--
+-- Indexes for table `student_profile_history`
+--
+ALTER TABLE `student_profile_history`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_profile_history_student` (`student_id`),
+  ADD KEY `idx_profile_history_date` (`created_at`);
+
+--
 -- Indexes for table `system_settings`
 --
 ALTER TABLE `system_settings`
@@ -635,6 +759,12 @@ ALTER TABLE `admin`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `audit_trail`
+--
+ALTER TABLE `audit_trail`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
 -- AUTO_INCREMENT for table `clinic_passes`
 --
 ALTER TABLE `clinic_passes`
@@ -644,6 +774,12 @@ ALTER TABLE `clinic_passes`
 -- AUTO_INCREMENT for table `clinic_referrals`
 --
 ALTER TABLE `clinic_referrals`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `clinic_referral_followups`
+--
+ALTER TABLE `clinic_referral_followups`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
@@ -707,10 +843,22 @@ ALTER TABLE `students`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
+-- AUTO_INCREMENT for table `student_profile_documents`
+--
+ALTER TABLE `student_profile_documents`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `student_profile_history`
+--
+ALTER TABLE `student_profile_history`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `teacher_course_assignments`
@@ -722,7 +870,7 @@ ALTER TABLE `teacher_course_assignments`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
 
 --
 -- Constraints for dumped tables
