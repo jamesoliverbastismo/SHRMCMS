@@ -208,6 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $rehash_stmt->bind_param('si', $hashed_password, $teacher_record_id);
 
                                     if ($rehash_stmt->execute()) {
+                                        $stored_password = $hashed_password;
                                         $password_valid = true;
                                     } else {
                                         error_log('Teacher password rehash failed: ' . $rehash_stmt->error);
@@ -222,10 +223,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $error_msg = 'Invalid ID or password.';
                             } elseif ($password_valid) {
                                 $teacherId = (int) $teacher_user['id'];
+                                $teacherName = (string) ($teacher_user['fullname'] ?? 'Teacher');
+                                $teacherEmail = trim((string) ($teacher_user['email'] ?? ''));
+                                $staffId = 0;
+
+                                $staffLookup = $conn->prepare(
+                                    "SELECT id FROM staff
+                                     WHERE LOWER(TRIM(role)) = 'teacher'
+                                       AND (
+                                            (? <> '' AND LOWER(TRIM(email)) = LOWER(TRIM(?)))
+                                            OR LOWER(TRIM(fullname)) = LOWER(TRIM(?))
+                                       )
+                                     LIMIT 1"
+                                );
+                                $staffLookup->bind_param('sss', $teacherEmail, $teacherEmail, $teacherName);
+                                $staffLookup->execute();
+                                $staffLookupRow = $staffLookup->get_result()->fetch_assoc();
+                                $staffLookup->close();
+                                $staffId = (int) ($staffLookupRow['id'] ?? 0);
+
+                                if ($staffId < 1) {
+                                    $staffIdNo = 'TEACHER-' . str_pad((string) $teacherId, 4, '0', STR_PAD_LEFT);
+                                    $staffInsert = $conn->prepare(
+                                        "INSERT INTO staff
+                                         (staff_id_no, password, fullname, role, email)
+                                         VALUES (?, ?, ?, 'Teacher', ?)"
+                                    );
+                                    $staffInsert->bind_param(
+                                        'ssss',
+                                        $staffIdNo,
+                                        $stored_password,
+                                        $teacherName,
+                                        $teacherEmail
+                                    );
+                                    $staffInsert->execute();
+                                    $staffId = (int) $staffInsert->insert_id;
+                                    $staffInsert->close();
+                                } else {
+                                    $staffUpdate = $conn->prepare(
+                                        "UPDATE staff
+                                         SET staff_id_no = COALESCE(NULLIF(staff_id_no, ''), ?),
+                                             fullname = ?, role = 'Teacher', email = ?, password = ?
+                                         WHERE id = ?"
+                                    );
+                                    $staffIdNo = 'TEACHER-' . str_pad((string) $teacherId, 4, '0', STR_PAD_LEFT);
+                                    $staffUpdate->bind_param(
+                                        'ssssi',
+                                        $staffIdNo,
+                                        $teacherName,
+                                        $teacherEmail,
+                                        $stored_password,
+                                        $staffId
+                                    );
+                                    $staffUpdate->execute();
+                                    $staffUpdate->close();
+                                }
+
+                                if ($staffId < 1) {
+                                    $error_msg = 'Unable to prepare your teacher account. Please try again.';
+                                } else {
                                 $mustChangePassword = needsInitialPasswordChange(
                                     $conn,
-                                    'teacher',
-                                    $teacherId
+                                    'staff',
+                                    $staffId
                                 );
 
                                 if ($mustChangePassword === null) {
@@ -234,18 +294,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     session_regenerate_id(true);
 
                                     $_SESSION['admin_logged_in'] = true;
-                                    $_SESSION['admin_username'] = $teacher_user['fullname'] ?? 'Teacher';
+                                    $_SESSION['admin_username'] = $teacherName;
                                     $_SESSION['user_role'] = 'Teacher';
-                                    $_SESSION['user_id'] = $teacherId;
-                                    $_SESSION['staff_id'] = $teacherId;
-                                    $_SESSION['auth_account_type'] = 'teacher';
-                                    $_SESSION['auth_account_id'] = $teacherId;
+                                    $_SESSION['user_id'] = $staffId;
+                                    $_SESSION['staff_id'] = $staffId;
+                                    $_SESSION['auth_account_type'] = 'staff';
+                                    $_SESSION['auth_account_id'] = $staffId;
                                     $_SESSION['must_change_password'] = $mustChangePassword;
                                     rbacLog($conn, 'login', 'Authentication', 'Session', session_id(), 'Teacher logged in');
 
                                     if ($mustChangePassword) {
                                         header('Location: change_initial_password.php');
                                         exit;
+                                    }
                                     }
 
                                     header('Location: Teacher_Dashboard/teacher_dashboard.php');

@@ -38,6 +38,64 @@ function rbacSessionTarget(): string
     return 'login.php';
 }
 
+function rbacEnsureTeacherReturnSchema(mysqli $conn): void
+{
+    $conn->query(
+        'CREATE TABLE IF NOT EXISTS teacher_course_assignments (
+            id INT NOT NULL AUTO_INCREMENT,
+            teacher_id INT NOT NULL,
+            course_year VARCHAR(50) NOT NULL,
+            can_view_passes TINYINT(1) NOT NULL DEFAULT 0,
+            can_view_authorization TINYINT(1) NOT NULL DEFAULT 0,
+            can_view_return_records TINYINT(1) NOT NULL DEFAULT 0,
+            can_confirm_returns TINYINT(1) NOT NULL DEFAULT 0,
+            can_review TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_teacher_course (teacher_id, course_year),
+            CONSTRAINT fk_tca_teacher FOREIGN KEY (teacher_id) REFERENCES staff(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+
+    $assignmentColumns = [];
+    $assignmentResult = $conn->query('SHOW COLUMNS FROM teacher_course_assignments');
+    while ($column = $assignmentResult->fetch_assoc()) {
+        $assignmentColumns[$column['Field']] = true;
+    }
+    $assignmentResult->free();
+
+    if (!isset($assignmentColumns['can_confirm_returns'])) {
+        $conn->query(
+            'ALTER TABLE teacher_course_assignments
+             ADD COLUMN can_confirm_returns TINYINT(1) NOT NULL DEFAULT 0
+             AFTER can_view_return_records'
+        );
+    }
+
+    $passColumns = [];
+    $passResult = $conn->query('SHOW COLUMNS FROM clinic_passes');
+    while ($column = $passResult->fetch_assoc()) {
+        $passColumns[$column['Field']] = true;
+    }
+    $passResult->free();
+
+    if (!isset($passColumns['teacher_confirmed_return_at'])) {
+        $conn->query(
+            'ALTER TABLE clinic_passes
+             ADD COLUMN teacher_confirmed_return_at DATETIME DEFAULT NULL
+             AFTER returned_at'
+        );
+    }
+
+    if (!isset($passColumns['return_confirmed_by_teacher_id'])) {
+        $conn->query(
+            'ALTER TABLE clinic_passes
+             ADD COLUMN return_confirmed_by_teacher_id INT DEFAULT NULL
+             AFTER returned_at'
+        );
+    }
+}
+
 function rbacEnsureAuditTable(mysqli $conn): void
 {
     @$conn->query(

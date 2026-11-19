@@ -66,6 +66,23 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
 $message = trim((string)($_GET['message'] ?? ''));
 $messageType = ($_GET['type'] ?? '') === 'error' ? 'error' : 'success';
 
+@$conn->query(
+    'CREATE TABLE IF NOT EXISTS medicine_inventory_transactions (
+        id INT NOT NULL AUTO_INCREMENT,
+        medicine_id INT NOT NULL,
+        movement VARCHAR(10) NOT NULL,
+        quantity INT NOT NULL,
+        quantity_before INT NOT NULL,
+        quantity_after INT NOT NULL,
+        note VARCHAR(255) DEFAULT NULL,
+        recorded_by VARCHAR(100) DEFAULT NULL,
+        recorded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        INDEX idx_inventory_transactions_medicine (medicine_id),
+        INDEX idx_inventory_transactions_date (recorded_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+);
+
 /* ---------------------------------
    POST ACTIONS: ADD, STOCK ADJUST, EDIT, DELETE
 --------------------------------- */
@@ -132,7 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $remarksVal
             );
             $stmt->execute();
+            $inventoryId = (int)$stmt->insert_id;
             $stmt->close();
+            rbacLog($conn, 'create', 'Medicine Inventory', 'Inventory Item', (string)$inventoryId, 'Medicine or supply item registered');
 
             redirectInventory('Medicine / medical supply item added to inventory.');
         } catch (Throwable $ex) {
@@ -193,6 +212,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateStmt->execute();
             $updateStmt->close();
 
+            $transactionNote = mb_substr($note, 0, 255);
+            $transactionNoteValue = $transactionNote !== '' ? $transactionNote : null;
+            $transactionStmt = $conn->prepare(
+                'INSERT INTO medicine_inventory_transactions
+                 (medicine_id, movement, quantity, quantity_before, quantity_after, note, recorded_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
+            );
+            $movementValue = strtoupper($movement);
+            $transactionStmt->bind_param(
+                'isiisss',
+                $medId,
+                $movementValue,
+                $adjustQty,
+                $currentQty,
+                $newQty,
+                $transactionNoteValue,
+                $username
+            );
+            $transactionStmt->execute();
+            $transactionStmt->close();
+            rbacLog(
+                $conn,
+                'stock adjustment',
+                'Medicine Inventory',
+                'Inventory Item',
+                (string)$medId,
+                'Stock ' . strtolower($movementValue) . ': ' . $adjustQty . ' unit(s); quantity ' . $currentQty . ' -> ' . $newQty
+            );
+
             $conn->commit();
             redirectInventory(
                 $movement === 'in'
@@ -218,6 +266,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $deleted = $stmt->affected_rows;
             $stmt->close();
+            if ($deleted) {
+                rbacLog($conn, 'delete', 'Medicine Inventory', 'Inventory Item', (string)$medId, 'Medicine or supply item removed');
+            }
 
             redirectInventory(
                 $deleted ? 'Inventory item removed.' : 'Inventory item could not be found.',
@@ -245,6 +296,7 @@ $stats = [
 ];
 
 $medicines = [];
+$inventoryTransactions = [];
 
 try {
     $statRes = $conn->query(
@@ -294,6 +346,20 @@ try {
         $medicines[] = $row;
     }
     $stmt->close();
+
+    $transactionResult = $conn->query(
+        'SELECT t.*, m.medicine_name, m.unit
+         FROM medicine_inventory_transactions t
+         INNER JOIN medicine_inventory m ON m.id = t.medicine_id
+         ORDER BY t.recorded_at DESC, t.id DESC
+         LIMIT 20'
+    );
+    if ($transactionResult) {
+        while ($row = $transactionResult->fetch_assoc()) {
+            $inventoryTransactions[] = $row;
+        }
+        $transactionResult->free();
+    }
 } catch (Throwable $ex) {
     error_log('Medicine load error: ' . $ex->getMessage());
     $message = $message ?: 'Unable to load medicine and supply inventory.';
@@ -397,6 +463,45 @@ $soonLimitStr = date('Y-m-d', strtotime('+30 days'));
                     <?php endif; ?>
                 </div>
             </section>
+            <?php if ($inventoryTransactions): ?>
+            <section class="consultation-records-card" aria-labelledby="inventory-history-heading">
+                <div class="consultation-section-heading">
+                    <div>
+                        <h2 id="inventory-history-heading">Recent stock transactions</h2>
+                        <p>Traceable stock-in and stock-out history.</p>
+                    </div>
+                </div>
+                <div class="consultation-table-wrap">
+                    <table class="consultation-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Item</th>
+                                <th scope="col">Movement</th>
+                                <th scope="col">Quantity change</th>
+                                <th scope="col">Recorded by</th>
+                                <th scope="col">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($inventoryTransactions as $transaction): ?>
+                            <tr>
+                                <td><strong><?= e($transaction['medicine_name']) ?></strong></td>
+                                <td><?= e($transaction['movement']) ?></td>
+                                <td>
+                                    <?= number_format((int)$transaction['quantity_before']) ?>
+                                    &rarr;
+                                    <?= number_format((int)$transaction['quantity_after']) ?>
+                                    <?= e($transaction['unit']) ?>
+                                </td>
+                                <td><?= e($transaction['recorded_by'] ?: 'Clinic Staff') ?></td>
+                                <td><?= e(date('M d, Y g:i A', strtotime($transaction['recorded_at']))) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <?php endif; ?>
         <?php endif; ?>
 
         <section class="consultation-stats">

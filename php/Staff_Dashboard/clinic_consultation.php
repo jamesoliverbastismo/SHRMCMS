@@ -152,6 +152,14 @@ if (
                     );
                     $stmt->execute();
                     $stmt->close();
+                    rbacLog(
+                        $conn,
+                        'update',
+                        'Clinic Consultation',
+                        'Consultation',
+                        (string)$edit_id,
+                        'Clinic visit or consultation entry updated'
+                    );
 
                     $_SESSION['consultation_flash'] =
                         'Clinic visit entry updated with traceable revision note.';
@@ -171,6 +179,15 @@ if (
                     );
                     $stmt->execute();
                     $stmt->close();
+                    $newConsultationId = (int)$conn->insert_id;
+                    rbacLog(
+                        $conn,
+                        'create',
+                        'Clinic Consultation',
+                        'Consultation',
+                        (string)$newConsultationId,
+                        'Clinic visit or consultation entry created'
+                    );
 
                     $_SESSION['consultation_flash'] =
                         'Clinic visit documentation saved successfully.';

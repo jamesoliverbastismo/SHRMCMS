@@ -259,6 +259,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $history->bind_param('isssss', $savedId, $studentIdNo, $snapshotJson, $changedBy, $changeNote, $historyAction);
                                 $history->execute();
                                 $history->close();
+                                rbacLog(
+                                    $conn,
+                                    $historyAction,
+                                    'Student Health Profiles',
+                                    'Student',
+                                    (string)$savedId,
+                                    'Student profile ' . $historyAction . ($changeNote !== '' ? ': ' . mb_substr($changeNote, 0, 255) : '')
+                                );
 
                                 if ($supportingDoc !== null) {
                                     $documentName = basename((string)($_FILES['supporting_document']['name'] ?? 'Supporting document'));

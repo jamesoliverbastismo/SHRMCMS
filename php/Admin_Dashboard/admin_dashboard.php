@@ -34,6 +34,13 @@ if (empty($_SESSION['admin_dashboard_csrf'])) {
 }
 $csrfToken = $_SESSION['admin_dashboard_csrf'];
 
+try {
+    rbacEnsureTeacherReturnSchema($conn);
+} catch (mysqli_sql_exception $exception) {
+    error_log('Teacher return schema update failed: ' . $exception->getMessage());
+    redirectDashboard('Teacher permissions could not be prepared. Please contact the system administrator.', 'error');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submittedToken = $_POST['csrf_token'] ?? '';
 
@@ -84,12 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $canViewPasses = isset($_POST['can_view_passes']) ? 1 : 0;
             $canViewAuthorization = isset($_POST['can_view_authorization']) ? 1 : 0;
             $canViewReturnRecords = isset($_POST['can_view_return_records']) ? 1 : 0;
+            $canConfirmReturns = isset($_POST['can_confirm_returns']) ? 1 : 0;
             $canReview = isset($_POST['can_review']) ? 1 : 0;
 
             if (
                 !$canViewPasses &&
                 !$canViewAuthorization &&
                 !$canViewReturnRecords &&
+                !$canConfirmReturns &&
                 !$canReview
             ) {
                 redirectDashboard('Grant at least one permission or leave existing permissions unchanged.', 'error');
@@ -98,21 +107,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $permissionStmt = $conn->prepare(
                 'INSERT INTO teacher_course_assignments
                     (teacher_id, course_year, can_view_passes,
-                     can_view_authorization, can_view_return_records, can_review)
-                 VALUES (?, ?, ?, ?, ?, ?)
+                     can_view_authorization, can_view_return_records,
+                     can_confirm_returns, can_review)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)
                  ON DUPLICATE KEY UPDATE
                     can_view_passes = VALUES(can_view_passes),
                     can_view_authorization = VALUES(can_view_authorization),
                     can_view_return_records = VALUES(can_view_return_records),
+                    can_confirm_returns = VALUES(can_confirm_returns),
                     can_review = VALUES(can_review)'
             );
             $permissionStmt->bind_param(
-                'isiiii',
+                'isiiiii',
                 $teacherId,
                 $courseYear,
                 $canViewPasses,
                 $canViewAuthorization,
                 $canViewReturnRecords,
+                $canConfirmReturns,
                 $canReview
             );
             $permissionStmt->execute();
@@ -190,8 +202,8 @@ try {
         'students' => 'SELECT COUNT(*) AS total FROM students',
         'staff' => "SELECT COUNT(*) AS total FROM staff
                     WHERE LOWER(TRIM(role)) <> 'teacher'",
-        'teachers' => "SELECT COUNT(*) AS total FROM staff
-                       WHERE LOWER(TRIM(role)) = 'teacher'",
+        'teachers' => "SELECT COUNT(*) AS total FROM teachers
+                       WHERE LOWER(TRIM(status)) = 'active'",
         'consultations' => 'SELECT COUNT(*) AS total FROM consultations',
         'today_consultations' => 'SELECT COUNT(*) AS total FROM consultations
                                   WHERE consultation_date = CURDATE()',
@@ -250,15 +262,75 @@ try {
     });
     $recentActivity = array_slice($recentActivity, 0, 10);
 
-    $teachersResult = $conn->query(
-        "SELECT id, fullname, role FROM staff
-         WHERE LOWER(TRIM(role)) = 'teacher'
-         ORDER BY fullname"
+    $teacherAccountResult = $conn->query(
+        'SELECT id, teacher_id_no, fullname, email, password
+         FROM teachers
+         WHERE LOWER(TRIM(status)) = \'active\''
     );
-    while ($row = $teachersResult->fetch_assoc()) {
-        $teachers[] = $row;
+    while ($teacherAccount = $teacherAccountResult->fetch_assoc()) {
+        $teacherEmail = trim((string)($teacherAccount['email'] ?? ''));
+        $teacherName = (string)$teacherAccount['fullname'];
+
+        $mirrorLookup = $conn->prepare(
+            'SELECT id FROM staff
+             WHERE LOWER(TRIM(role)) = \'teacher\'
+               AND (
+                    (? <> \'\' AND LOWER(TRIM(email)) = LOWER(TRIM(?)))
+                    OR LOWER(TRIM(fullname)) = LOWER(TRIM(?))
+               )
+             LIMIT 1'
+        );
+        $mirrorLookup->bind_param('sss', $teacherEmail, $teacherEmail, $teacherName);
+        $mirrorLookup->execute();
+        $mirrorRow = $mirrorLookup->get_result()->fetch_assoc();
+        $mirrorLookup->close();
+        $staffId = (int)($mirrorRow['id'] ?? 0);
+
+        if ($staffId < 1) {
+            $staffIdNo = 'TEACHER-' . str_pad((string)$teacherAccount['id'], 4, '0', STR_PAD_LEFT);
+            $mirrorInsert = $conn->prepare(
+                "INSERT INTO staff
+                 (staff_id_no, password, fullname, role, email)
+                 VALUES (?, ?, ?, 'Teacher', ?)"
+            );
+            $mirrorInsert->bind_param(
+                'ssss',
+                $staffIdNo,
+                $teacherAccount['password'],
+                $teacherName,
+                $teacherEmail
+            );
+            $mirrorInsert->execute();
+            $staffId = (int)$mirrorInsert->insert_id;
+            $mirrorInsert->close();
+        } else {
+            $mirrorUpdate = $conn->prepare(
+                "UPDATE staff
+                 SET staff_id_no = COALESCE(NULLIF(staff_id_no, ''), ?),
+                     fullname = ?, role = 'Teacher', email = ?, password = ?
+                 WHERE id = ?"
+            );
+            $staffIdNo = 'TEACHER-' . str_pad((string)$teacherAccount['id'], 4, '0', STR_PAD_LEFT);
+            $mirrorUpdate->bind_param(
+                'ssssi',
+                $staffIdNo,
+                $teacherName,
+                $teacherEmail,
+                $teacherAccount['password'],
+                $staffId
+            );
+            $mirrorUpdate->execute();
+            $mirrorUpdate->close();
+        }
+
+        $teachers[] = [
+            'id' => $staffId,
+            'fullname' => $teacherName,
+            'teacher_id_no' => (string)$teacherAccount['teacher_id_no'],
+            'role' => 'Teacher',
+        ];
     }
-    $teachersResult->free();
+    $teacherAccountResult->free();
 
     $courseYearsResult = $conn->query(
         "SELECT DISTINCT course_year FROM students
@@ -270,20 +342,13 @@ try {
     }
     $courseYearsResult->free();
 
-    $tablesResult = $conn->query('SHOW TABLES');
-    while ($tableRow = $tablesResult->fetch_row()) {
-        if ($tableRow[0] === 'teacher_course_assignments') {
-            $teacherPermissionTablesReady = true;
-            break;
-        }
-    }
-    $tablesResult->free();
+    $teacherPermissionTablesReady = true;
 
     if ($teacherPermissionTablesReady) {
         $assignmentResult = $conn->query(
             'SELECT a.id, a.teacher_id, a.course_year,
                     a.can_view_passes, a.can_view_authorization,
-                    a.can_view_return_records, a.can_review,
+                    a.can_view_return_records, a.can_confirm_returns, a.can_review,
                     s.fullname
              FROM teacher_course_assignments a
              INNER JOIN staff s ON s.id = a.teacher_id
@@ -323,7 +388,7 @@ try {
             <a href="admin_dashboard.php" class="active" aria-current="page"><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"> Dashboard</a>
             <a href="user_management.php"><img class="ui-icon" src="../../image/icon-users.svg" alt="" aria-hidden="true"> User Accounts</a>
             <a href="staff_management.php"><img class="ui-icon" src="../../image/icon-staff.svg" alt="" aria-hidden="true"> Staff Management</a>
-            <a href="system_reports.php"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"> Clinic Reports</a>
+            <a href="system_reports.php"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"> System Reports</a>
             <a href="system_settings.php"><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"> Security &amp; Settings</a>
             <a href="../logout.php" class="logout-link"><img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"> Logout</a>
         </nav>
@@ -411,7 +476,7 @@ try {
                             <img class="ui-icon" src="../../image/icon-profile.svg" alt="" aria-hidden="true">
                         </div>
                         <strong class="admin-stat-number"><?= number_format($stats['teachers']) ?></strong>
-                        <span class="admin-stat-caption">Permission assignments below</span>
+                        <a href="user_management.php?search=Teacher">View teacher accounts →</a>
                     </article>
                 </div>
             </section>
@@ -467,9 +532,35 @@ try {
                     <div class="admin-setup-notice" role="status">
                         Teacher permission storage is not installed yet. Import the teacher dashboard tables from the project SQL file before assigning access.
                     </div>
-                <?php elseif (!$teachers || !$courseYears): ?>
+                <?php elseif (!$teachers): ?>
                     <div class="admin-setup-notice" role="status">
-                        Add a teacher in Staff Management and ensure student course/year values exist before creating an assignment.
+                        No active teacher accounts were found. Add a Teacher account in User Accounts before assigning clinic access.
+                    </div>
+                <?php elseif (!$courseYears): ?>
+                    <div class="admin-setup-notice" role="status">
+                        <strong><?= number_format(count($teachers)) ?> active teacher account(s) found.</strong>
+                        Student profiles do not have a course/year value yet, so class permissions cannot be assigned. Add the course/year in
+                        <a href="../Staff_Dashboard/student_profiles.php">Student Profiles</a>, then return here to assign teacher access.
+                        <div class="admin-table-wrap">
+                            <table class="admin-permissions-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Teacher</th>
+                                        <th scope="col">Teacher ID</th>
+                                        <th scope="col">Account</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($teachers as $teacher): ?>
+                                        <tr>
+                                            <td><?= e($teacher['fullname']) ?></td>
+                                            <td><?= e($teacher['teacher_id_no']) ?></td>
+                                            <td>Active</td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 <?php else: ?>
                     <form method="post" class="admin-permission-form">
@@ -501,6 +592,7 @@ try {
                             <label><input type="checkbox" name="can_view_passes" value="1"> View clinic passes</label>
                             <label><input type="checkbox" name="can_view_authorization" value="1"> View authorization status</label>
                             <label><input type="checkbox" name="can_view_return_records" value="1"> View return-to-class records</label>
+                            <label><input type="checkbox" name="can_confirm_returns" value="1"> Confirm student returned to class</label>
                             <label><input type="checkbox" name="can_review" value="1"> Mark passes as reviewed</label>
                         </fieldset>
 
@@ -517,6 +609,7 @@ try {
                                         <th scope="col">Passes</th>
                                         <th scope="col">Authorization</th>
                                         <th scope="col">Return records</th>
+                                        <th scope="col">Confirm return</th>
                                         <th scope="col">Review</th>
                                         <th scope="col">Actions</th>
                                     </tr>
@@ -529,6 +622,7 @@ try {
                                             <td><?= (int)$assignment['can_view_passes'] ? 'Allowed' : '—' ?></td>
                                             <td><?= (int)$assignment['can_view_authorization'] ? 'Allowed' : '—' ?></td>
                                             <td><?= (int)$assignment['can_view_return_records'] ? 'Allowed' : '—' ?></td>
+                                            <td><?= (int)$assignment['can_confirm_returns'] ? 'Allowed' : '—' ?></td>
                                             <td><?= (int)$assignment['can_review'] ? 'Allowed' : '—' ?></td>
                                             <td>
                                                 <form method="post" class="admin-revoke-form"

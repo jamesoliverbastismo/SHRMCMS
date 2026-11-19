@@ -269,6 +269,11 @@ $staff_result = $stmt->get_result();
 
 $count_result = $conn->query("SELECT COUNT(*) AS total FROM staff WHERE LOWER(TRIM(role)) <> 'teacher'");
 $total_staff = (int)($count_result->fetch_assoc()['total'] ?? 0);
+$teacher_result = $conn->query(
+    'SELECT teacher_id_no, fullname, email, status
+     FROM teachers
+     ORDER BY fullname'
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -297,7 +302,7 @@ $total_staff = (int)($count_result->fetch_assoc()['total'] ?? 0);
             <a href="admin_dashboard.php"><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"> Dashboard</a>
             <a href="user_management.php"><img class="ui-icon" src="../../image/icon-users.svg" alt="" aria-hidden="true"> User Accounts</a>
             <a href="staff_management.php" class="active" aria-current="page"><img class="ui-icon" src="../../image/icon-staff.svg" alt="" aria-hidden="true"> Staff Management</a>
-            <a href="system_reports.php"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"> Clinic Reports</a>
+            <a href="system_reports.php"><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"> System Reports</a>
             <a href="system_settings.php"><img class="ui-icon" src="../../image/icon-settings.svg" alt="" aria-hidden="true"> Security &amp; Settings</a>
             <a href="../logout.php" class="logout-link" onclick="return confirm('Are you sure you want to log out?')">
                 <img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"> Logout
@@ -336,6 +341,44 @@ $total_staff = (int)($count_result->fetch_assoc()['total'] ?? 0);
                     <p>Total Registered Staff</p>
                     <h2><?= number_format($total_staff) ?></h2>
                     <span>Clinic personnel directory</span>
+                </div>
+            </section>
+
+            <section class="staff-panel" aria-labelledby="teacher-accounts-heading">
+                <div class="staff-panel-heading">
+                    <div>
+                        <h3 id="teacher-accounts-heading">Teacher Accounts (<?= number_format($teacher_result->num_rows) ?>)</h3>
+                        <p>Teacher logins are managed in User Accounts; clinic staff records remain separate.</p>
+                    </div>
+                    <a class="staff-btn staff-btn-light" href="user_management.php?search=Teacher">Manage teacher accounts</a>
+                </div>
+                <div class="staff-table-wrap">
+                    <table class="staff-table">
+                        <thead>
+                            <tr>
+                                <th>Teacher ID</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Account Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($teacher_result->num_rows > 0): ?>
+                                <?php while ($teacher = $teacher_result->fetch_assoc()): ?>
+                                    <tr>
+                                        <td><strong class="staff-id"><?= e($teacher['teacher_id_no']) ?></strong></td>
+                                        <td><?= e($teacher['fullname']) ?></td>
+                                        <td><?= e($teacher['email'] ?: '—') ?></td>
+                                        <td><span class="staff-role"><?= e($teacher['status']) ?></span></td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="4" class="staff-empty">No teacher accounts found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 

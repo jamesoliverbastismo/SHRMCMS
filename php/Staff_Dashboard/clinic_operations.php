@@ -115,6 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param('ssssi', $studentNo, $passDate, $passStatus, $authStatus, $staffId);
             $stmt->execute();
             $stmt->close();
+            rbacLog($conn, 'create', 'Clinic Operations', 'Clinic Pass', (string)$conn->insert_id, 'Clinic pass issued');
 
             redirectOps('Clinic pass issued for attendance and return-to-class tracking.', 'success', 'passes');
         }
@@ -130,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param('i', $passId);
                 $stmt->execute();
                 $stmt->close();
+                rbacLog($conn, 'update', 'Clinic Operations', 'Clinic Pass', (string)$passId, 'Return-to-class status recorded');
             }
             redirectOps('Return-to-class time recorded.', 'success', 'passes');
         }
@@ -160,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param('sssssiss', $studentNo, $refDate, $reason, $destination, $status, $reqFollowUp, $staffId, $dueDateValue);
             $stmt->execute();
             $stmt->close();
+            rbacLog($conn, 'create', 'Clinic Operations', 'Referral', (string)$conn->insert_id, 'Referral record created');
 
             redirectOps('Referral record saved.', 'success', 'referrals');
         }
@@ -194,6 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $history->bind_param('issss', $refId, $status, $remarks, $outcome, $followedUpBy);
                 $history->execute();
                 $history->close();
+                rbacLog($conn, 'update', 'Clinic Operations', 'Referral', (string)$refId, 'Referral follow-up status updated');
             }
             redirectOps('Referral follow-up status updated.', 'success', 'referrals');
         }
@@ -220,6 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param('sssssisi', $studentNo, $incDate, $location, $circumstances, $firstAid, $refNeeded, $status, $staffId);
             $stmt->execute();
             $stmt->close();
+            rbacLog($conn, 'create', 'Clinic Operations', 'Incident', (string)$conn->insert_id, 'Incident and first-aid record created');
 
             redirectOps('Incident and first-aid record saved.', 'success', 'incidents');
         }
@@ -236,6 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param('ssi', $status, $outcome, $incId);
                 $stmt->execute();
                 $stmt->close();
+                rbacLog($conn, 'update', 'Clinic Operations', 'Incident', (string)$incId, 'Incident follow-up outcome updated');
             }
             redirectOps('Incident follow-up outcome updated.', 'success', 'incidents');
         }

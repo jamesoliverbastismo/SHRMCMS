@@ -5,7 +5,8 @@ $accountType = $_SESSION['auth_account_type'] ?? '';
 $accountId = (int)($_SESSION['auth_account_id'] ?? 0);
 $role = $_SESSION['user_role'] ?? '';
 $validAccountRole = ($accountType === 'student' && $role === 'Student') ||
-    ($accountType === 'staff' && in_array($role, ['Staff', 'Teacher'], true));
+    ($accountType === 'staff' && in_array($role, ['Staff', 'Teacher'], true)) ||
+    ($accountType === 'teacher' && $role === 'Teacher');
 
 if (
     !isset($_SESSION['admin_logged_in']) ||
