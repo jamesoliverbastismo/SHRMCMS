@@ -82,8 +82,8 @@ $examinationDate = $certificate['examination_date']
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medical Certificate <?= e($certificate['qr_code_hash']) ?> | SHRCMS</title>
-    <link rel="stylesheet" href="../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../css/medical-certificate.css">
+    <link rel="stylesheet" href="../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../css/Shared/medical-certificate.css">
     <script src="../js/qrcode-generator.js" defer></script>
     <script src="../js/medical-certificate-qr.js" defer></script>
 </head>

@@ -24,9 +24,9 @@ if (empty($_SESSION['csrf_token'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Medical Certificate | SHRCMS</title>
-    <link rel="stylesheet" href="../../css/style.css">
-    <link rel="stylesheet" href="../../css/staff-dashboard.css">
-    <link rel="stylesheet" href="../../css/medical-certificate.css">
+    <link rel="stylesheet" href="../../css/Shared/style.css">
+    <link rel="stylesheet" href="../../css/Staff/staff-dashboard.css">
+    <link rel="stylesheet" href="../../css/Shared/medical-certificate.css">
     <script src="../../js/medical-certificate-scanner.js" defer></script>
 </head>
 <body class="staff-dashboard-body">

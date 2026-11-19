@@ -232,26 +232,36 @@ $records = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medical Examinations - SHRCMS</title>
-    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/staff-dashboard.css?v=20261119-examinations">
-    <link rel="stylesheet" href="../../css/consultation.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Staff/staff-dashboard.css?v=20261119-examinations">
+    <link rel="stylesheet" href="../../css/Staff/consultation.css?v=20261114-icons">
 </head>
 <body class="staff-dashboard-body">
 <aside class="staff-sidebar">
     <a href="staff_dashboard.php" class="staff-brand"><img src="../../image/logo2.png" alt="SHRCMS Logo"><div><h2>SHRCMS</h2><p>Clinic Management</p></div></a>
-    <p class="sidebar-label">MAIN MENU</p>
-    <nav class="staff-nav">
-        <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
-        <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
-        <a href="student_profiles.php"><span><img class="ui-icon" src="../../image/icon-student.svg" alt="" aria-hidden="true"></span> Student Profiles</a>
-        <a href="clinic_operations.php?view=passes"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Clinic Passes</a>
-        <a href="clinic_operations.php?view=referrals"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Referrals</a>
-        <a href="clinic_operations.php?view=incidents"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Incidents</a>
-        <a href="health_documentation.php"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
-        <a href="medical_examinations.php" class="active"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medical Examinations</a>
-        <a href="../logout.php" class="logout-link"><span><img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"></span> Logout</a>
-    </nav>
-</aside>
+      <nav class="staff-nav">
+            <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
+            <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
+            <a href="clinic_operations.php?view=passes"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Clinic Passes</a>
+            <a href="clinic_operations.php?view=referrals"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Referrals</a>
+            <a href="clinic_operations.php?view=incidents"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Incidents</a>
+            <a href="health_documentation.php"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
+            <a href="medical_examinations.php" class="active"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medical Examinations</a>
+            <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
+            <a href="medicine_inventory.php" >
+                <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medicine Inventory
+            </a>
+
+            <p class="sidebar-label">REPORTS</p>
+            <a href="clinic_reports.php"><span><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"></span> Clinic Reports</a>
+            <a href="../logout.php" class="logout-link"><span><img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"></span> Logout</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <p>Student Health Record</p>
+            <small>Clinic Management System</small>
+        </div>
+    </aside>
 <main class="staff-main">
     <header class="staff-header">
         <div><p class="page-eyebrow">STAFF PORTAL</p><h1>Medical Examinations</h1><p class="header-subtitle">Record school-required assessments actually conducted by the clinic.</p></div>

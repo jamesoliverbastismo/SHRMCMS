@@ -49,6 +49,9 @@ $view = (string)($_GET['view'] ?? 'passes');
 if (!in_array($view, ['passes', 'referrals', 'incidents'], true)) {
     $view = 'passes';
 }
+$search = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
+$search = mb_substr($search, 0, 100);
+$searchPattern = '%' . $search . '%';
 
 function ensureReferralTrackingSchema(mysqli $conn): void
 {
@@ -261,29 +264,74 @@ $referralFollowups = [];
 $referralStats = ['pending' => 0, 'overdue' => 0, 'closed' => 0];
 
 try {
-    $pRes = $conn->query(
+    $passStmt = $conn->prepare(
         "SELECT p.*, s.fullname, s.course_year
          FROM clinic_passes p
          LEFT JOIN students s ON s.student_id_no = p.student_id_no
+         WHERE (? = '' OR p.student_id_no LIKE ? OR s.fullname LIKE ?
+                OR s.course_year LIKE ? OR p.pass_status LIKE ?
+                OR p.authorization_status LIKE ? OR p.return_status LIKE ?)
          ORDER BY p.pass_date DESC, p.id DESC LIMIT 30"
     );
-    $passes = $pRes->fetch_all(MYSQLI_ASSOC);
+    $passStmt->bind_param(
+        'sssssss',
+        $search,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern
+    );
+    $passStmt->execute();
+    $passes = $passStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $passStmt->close();
 
-    $rRes = $conn->query(
+    $referralStmt = $conn->prepare(
         "SELECT r.*, s.fullname, s.course_year
          FROM clinic_referrals r
          LEFT JOIN students s ON s.student_id_no = r.student_id_no
+         WHERE (? = '' OR r.student_id_no LIKE ? OR s.fullname LIKE ?
+                OR s.course_year LIKE ? OR r.reason LIKE ?
+                OR r.destination LIKE ? OR r.follow_up_status LIKE ?)
          ORDER BY r.referral_date DESC, r.id DESC LIMIT 30"
     );
-    $referrals = $rRes->fetch_all(MYSQLI_ASSOC);
+    $referralStmt->bind_param(
+        'sssssss',
+        $search,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern
+    );
+    $referralStmt->execute();
+    $referrals = $referralStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $referralStmt->close();
 
-    $iRes = $conn->query(
+    $incidentStmt = $conn->prepare(
         "SELECT i.*, s.fullname, s.course_year
          FROM incident_records i
          LEFT JOIN students s ON s.student_id_no = i.student_id_no
+         WHERE (? = '' OR i.student_id_no LIKE ? OR s.fullname LIKE ?
+                OR s.course_year LIKE ? OR i.location LIKE ?
+                OR i.follow_up_status LIKE ? OR i.outcome_notes LIKE ?)
          ORDER BY i.incident_datetime DESC, i.id DESC LIMIT 30"
     );
-    $incidents = $iRes->fetch_all(MYSQLI_ASSOC);
+    $incidentStmt->bind_param(
+        'sssssss',
+        $search,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern,
+        $searchPattern
+    );
+    $incidentStmt->execute();
+    $incidents = $incidentStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $incidentStmt->close();
 
     if ($view === 'referrals') {
         $statsRes = $conn->query(
@@ -328,9 +376,9 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $view === 'passes' ? 'Clinic Passes' : ($view === 'referrals' ? 'Clinic Referrals' : 'Clinic Incidents') ?> - SHRCMS</title>
-    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/staff-dashboard.css?v=20261115-staff-admin-alignment">
-    <link rel="stylesheet" href="../../css/consultation.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Staff/staff-dashboard.css?v=20261115-staff-admin-alignment">
+    <link rel="stylesheet" href="../../css/Staff/consultation.css?v=20261114-icons">
 </head>
 <body class="staff-dashboard-body">
     <aside class="staff-sidebar">
@@ -417,6 +465,16 @@ try {
                 </div>
             </form>
 
+            <form method="GET" action="clinic_operations.php" class="consultation-search-form clinic-operations-search">
+                <input type="hidden" name="view" value="passes">
+                <div class="search-input-wrap">
+                    <span><img class="ui-icon" src="../../image/icon-search.svg" alt="" aria-hidden="true"></span>
+                    <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search student, ID, course/year, or pass status..." aria-label="Search clinic passes">
+                </div>
+                <button type="submit" class="consultation-search-button">Search passes</button>
+                <?php if ($search !== ''): ?><a class="consultation-reset-link" href="clinic_operations.php?view=passes">Clear</a><?php endif; ?>
+            </form>
+
             <div class="consultation-table-wrap" style="margin-top:16px;">
                 <table class="consultation-table">
                     <thead>
@@ -444,7 +502,7 @@ try {
                                 </td>
                             </tr>
                         <?php endforeach; else: ?>
-                            <tr><td colspan="6">No clinic passes recorded yet.</td></tr>
+                            <tr><td colspan="6"><?= $search !== '' ? 'No clinic passes match your search.' : 'No clinic passes recorded yet.' ?></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -492,6 +550,16 @@ try {
                 <div class="consultation-form-footer">
                     <button type="submit" class="consultation-submit">Save Referral</button>
                 </div>
+            </form>
+
+            <form method="GET" action="clinic_operations.php" class="consultation-search-form clinic-operations-search">
+                <input type="hidden" name="view" value="referrals">
+                <div class="search-input-wrap">
+                    <span><img class="ui-icon" src="../../image/icon-search.svg" alt="" aria-hidden="true"></span>
+                    <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search student, ID, destination, reason, or follow-up status..." aria-label="Search referrals">
+                </div>
+                <button type="submit" class="consultation-search-button">Search referrals</button>
+                <?php if ($search !== ''): ?><a class="consultation-reset-link" href="clinic_operations.php?view=referrals">Clear</a><?php endif; ?>
             </form>
 
             <div class="consultation-table-wrap" style="margin-top:16px;">
@@ -550,7 +618,7 @@ try {
                                 </td>
                             </tr>
                         <?php endforeach; else: ?>
-                            <tr><td colspan="5">No referrals recorded yet.</td></tr>
+                            <tr><td colspan="5"><?= $search !== '' ? 'No referrals match your search.' : 'No referrals recorded yet.' ?></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -602,6 +670,16 @@ try {
                 </div>
             </form>
 
+            <form method="GET" action="clinic_operations.php" class="consultation-search-form clinic-operations-search">
+                <input type="hidden" name="view" value="incidents">
+                <div class="search-input-wrap">
+                    <span><img class="ui-icon" src="../../image/icon-search.svg" alt="" aria-hidden="true"></span>
+                    <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search student, ID, course/year, location, or status..." aria-label="Search incident records">
+                </div>
+                <button type="submit" class="consultation-search-button">Search incidents</button>
+                <?php if ($search !== ''): ?><a class="consultation-reset-link" href="clinic_operations.php?view=incidents">Clear</a><?php endif; ?>
+            </form>
+
             <div class="consultation-table-wrap" style="margin-top:16px;">
                 <table class="consultation-table">
                     <thead>
@@ -630,7 +708,7 @@ try {
                                 </td>
                             </tr>
                         <?php endforeach; else: ?>
-                            <tr><td colspan="5">No incidents logged yet.</td></tr>
+                            <tr><td colspan="5"><?= $search !== '' ? 'No incidents match your search.' : 'No incidents logged yet.' ?></td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

@@ -378,6 +378,10 @@
     margin-bottom: 20px;
 }
 
+.clinic-operations-search {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
 .search-input-wrap {
     position: relative;
     min-width: 0;
@@ -836,6 +840,10 @@
     .consultation-search-form {
         grid-template-columns: minmax(0, 1fr);
         gap: 10px;
+    }
+
+    .clinic-operations-search {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .consultation-search-form .search-input-wrap {

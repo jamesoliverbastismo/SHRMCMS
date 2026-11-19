@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Nov 19, 2026 at 11:59 AM
+-- Generation Time: Nov 19, 2026 at 02:14 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.4.12
 
@@ -222,7 +222,47 @@ INSERT INTO `audit_trail` (`id`, `actor_name`, `actor_role`, `actor_user_id`, `a
 (151, 'olivia', 'Staff', 1, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 11:53:08'),
 (152, 'olivia', 'Staff', 1, 'update', 'Clinic Operations', 'Clinic Pass', '3', 'Return-to-class status recorded', '::1', '2026-11-19 11:53:15'),
 (153, 'olivia', 'Staff', 1, 'logout', 'Authentication', 'Session', '616d82408ede0641346368b5f3815352', 'User logged out', '::1', '2026-11-19 11:56:54'),
-(154, 'Alipuyo, Jinks, LPT.', 'Teacher', 16, 'login', 'Authentication', 'Session', 'a51516d9e060c1dd2d18915992c84c11', 'Teacher logged in', '::1', '2026-11-19 11:57:03');
+(154, 'Alipuyo, Jinks, LPT.', 'Teacher', 16, 'login', 'Authentication', 'Session', 'a51516d9e060c1dd2d18915992c84c11', 'Teacher logged in', '::1', '2026-11-19 11:57:03'),
+(155, 'James oliver Bastismo', 'Staff', 2, 'login', 'Authentication', 'Session', '7dff55ffc59731ecca8370e3afcc1cf7', 'Staff or Teacher logged in', '::1', '2026-11-19 12:18:11'),
+(156, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 12:18:11'),
+(157, 'admin', 'Administrator', 1, 'login', 'Authentication', 'Session', '9bf2f81156ad8cd6f74692a635aeeb67', 'Administrator logged in', '::1', '2026-11-19 12:42:05'),
+(158, 'admin', 'Administrator', 1, 'view', 'Admin Dashboard', 'Page', 'admin_dashboard', 'Administrator dashboard accessed', '::1', '2026-11-19 12:42:05'),
+(159, 'admin', 'Administrator', 1, 'create', 'User Management', 'User', '32', 'Parent account created', '::1', '2026-11-19 12:43:17'),
+(160, 'admin', 'Administrator', 1, 'logout', 'Authentication', 'Session', '9bf2f81156ad8cd6f74692a635aeeb67', 'User logged out', '::1', '2026-11-19 12:43:19'),
+(161, 'admin', 'Administrator', 1, 'login', 'Authentication', 'Session', 'ada2c1718a6f06308b8324a24aad5e5d', 'Administrator logged in', '::1', '2026-11-19 12:44:28'),
+(162, 'admin', 'Administrator', 1, 'view', 'Admin Dashboard', 'Page', 'admin_dashboard', 'Administrator dashboard accessed', '::1', '2026-11-19 12:44:28'),
+(163, 'admin', 'Administrator', 1, 'view', 'Admin Dashboard', 'Page', 'admin_dashboard', 'Administrator dashboard accessed', '::1', '2026-11-19 12:46:08'),
+(164, 'admin', 'Administrator', 1, 'view', 'Admin Dashboard', 'Page', 'admin_dashboard', 'Administrator dashboard accessed', '::1', '2026-11-19 12:46:15'),
+(165, 'admin', 'Administrator', 1, 'logout', 'Authentication', 'Session', 'ada2c1718a6f06308b8324a24aad5e5d', 'User logged out', '::1', '2026-11-19 12:53:49'),
+(166, 'James oliver Bastismo', 'Staff', 2, 'login', 'Authentication', 'Session', 'ab72148ad6407bbecae6b3f2b961da83', 'Staff or Teacher logged in', '::1', '2026-11-19 12:54:03'),
+(167, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 12:54:03'),
+(168, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:03:14'),
+(169, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:03:15'),
+(170, 'James oliver Bastismo', 'Staff', 2, 'create', 'Clinic Consultation', 'Consultation', '8', 'Clinic visit or consultation entry created', '::1', '2026-11-19 13:09:55'),
+(171, 'James oliver Bastismo', 'Staff', 2, 'create', 'Clinic Operations', 'Clinic Pass', '4', 'Clinic pass issued', '::1', '2026-11-19 13:12:19'),
+(172, 'James oliver Bastismo', 'Staff', 2, 'logout', 'Authentication', 'Session', 'ab72148ad6407bbecae6b3f2b961da83', 'User logged out', '::1', '2026-11-19 13:12:58'),
+(173, 'mayshane paran', 'Teacher', 17, 'login', 'Authentication', 'Session', '0a7f3275dfee5c106e2d8bf1d493d0b9', 'Teacher logged in', '::1', '2026-11-19 13:13:11'),
+(174, 'mayshane paran', 'Teacher', 17, 'review', 'Teacher Dashboard', 'Clinic Pass', '3', 'Clinic pass marked as reviewed', '::1', '2026-11-19 13:13:41'),
+(175, 'mayshane paran', 'Teacher', 17, 'logout', 'Authentication', 'Session', '0a7f3275dfee5c106e2d8bf1d493d0b9', 'User logged out', '::1', '2026-11-19 13:13:48'),
+(176, 'James oliver Bastismo', 'Staff', 2, 'login', 'Authentication', 'Session', '20afb44b5c6a5644b39e7d12fb6ad07e', 'Staff or Teacher logged in', '::1', '2026-11-19 13:14:04'),
+(177, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:14:04'),
+(178, 'James oliver Bastismo', 'Staff', 2, 'stock adjustment', 'Medicine Inventory', 'Inventory Item', '2', 'Stock in: 1 unit(s); quantity 9 -> 10', '::1', '2026-11-19 13:17:07'),
+(179, 'James oliver Bastismo', 'Staff', 2, 'create', 'Medicine Inventory', 'Inventory Item', '3', 'Medicine or supply item registered', '::1', '2026-11-19 13:18:16'),
+(180, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:21:01'),
+(181, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:26:41'),
+(182, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:27:12'),
+(183, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:44:28'),
+(184, 'James oliver Bastismo', 'Staff', 2, 'logout', 'Authentication', 'Session', '20afb44b5c6a5644b39e7d12fb6ad07e', 'User logged out', '::1', '2026-11-19 13:44:38'),
+(185, 'Kisha Nicole Paran', 'Student', 27, 'logout', 'Authentication', 'Session', '476f2b20670d0bf70c7c19960d11ce6a', 'User logged out', '::1', '2026-11-19 13:45:26'),
+(186, 'admin', 'Administrator', 1, 'login', 'Authentication', 'Session', 'df40a9e1ecc5bd525100ac2b206ac59e', 'Administrator logged in', '::1', '2026-11-19 13:45:42'),
+(187, 'admin', 'Administrator', 1, 'view', 'Admin Dashboard', 'Page', 'admin_dashboard', 'Administrator dashboard accessed', '::1', '2026-11-19 13:45:42'),
+(188, 'admin', 'Administrator', 1, 'logout', 'Authentication', 'Session', 'df40a9e1ecc5bd525100ac2b206ac59e', 'User logged out', '::1', '2026-11-19 13:45:46'),
+(189, 'James oliver Bastismo', 'Staff', 2, 'login', 'Authentication', 'Session', '21d1cb125e7240ef034228732ba4fc5f', 'Staff or Teacher logged in', '::1', '2026-11-19 13:46:04'),
+(190, 'James oliver Bastismo', 'Staff', 2, 'view', 'Staff Dashboard', 'Page', 'staff_dashboard', 'Staff dashboard accessed', '::1', '2026-11-19 13:46:04'),
+(191, 'James oliver Bastismo', 'Staff', 2, 'updated', 'Student Health Profiles', 'Student', '11', 'Student profile updated', '::1', '2026-11-19 13:53:41'),
+(192, 'James oliver Bastismo', 'Staff', 2, 'update', 'Student Profiles', 'Student', '11', 'Student profile record saved', '::1', '2026-11-19 13:53:41'),
+(193, 'James oliver Bastismo', 'Staff', 2, 'updated', 'Student Health Profiles', 'Student', '11', 'Student profile updated', '::1', '2026-11-19 14:01:59'),
+(194, 'James oliver Bastismo', 'Staff', 2, 'update', 'Student Profiles', 'Student', '11', 'Student profile record saved', '::1', '2026-11-19 14:01:59');
 
 -- --------------------------------------------------------
 
@@ -251,7 +291,8 @@ CREATE TABLE `clinic_passes` (
 INSERT INTO `clinic_passes` (`id`, `student_id_no`, `pass_date`, `pass_status`, `authorization_status`, `return_status`, `returned_at`, `teacher_confirmed_return_at`, `return_confirmed_by_teacher_id`, `issued_by_staff_id`, `created_at`) VALUES
 (1, 'SCC-22-00016716', '2026-11-19 11:33:00', 'Completed', 'Pending', 'Returned', '2026-11-19 19:35:33', '2026-11-19 19:34:30', 15, 1, '2026-11-19 11:33:43'),
 (2, 'SCC-22-00022156', '2026-11-19 11:38:00', 'Completed', 'Authorized', 'Returned', '2026-11-19 19:47:32', NULL, NULL, 1, '2026-11-19 11:39:16'),
-(3, 'scc-000', '2026-11-19 11:52:00', 'Completed', 'Pending', 'Returned', '2026-11-19 19:53:15', '2026-11-19 19:52:53', 16, 1, '2026-11-19 11:52:30');
+(3, 'scc-000', '2026-11-19 11:52:00', 'Completed', 'Pending', 'Returned', '2026-11-19 19:53:15', '2026-11-19 19:52:53', 16, 1, '2026-11-19 11:52:30'),
+(4, 'SCC-000-20221567', '2026-11-19 13:11:00', 'Issued', 'Authorized', 'Pending', NULL, NULL, NULL, 2, '2026-11-19 13:12:19');
 
 -- --------------------------------------------------------
 
@@ -319,7 +360,8 @@ INSERT INTO `consultations` (`id`, `student_id`, `consultation_date`, `reason`, 
 (4, 'scc-00-2024-987634', '2026-10-17', 'General Check-up', '', 'shani', '2026-10-17 07:44:29'),
 (5, 'scc-00-2024-987634', '2026-10-17', 'General Check-up', '', 'shani', '2026-10-17 13:23:04'),
 (6, '3', '2026-10-31', 'Fever / Headache', 'pabinisaya lang daii', 'dutctmilk', '2026-10-31 01:29:58'),
-(7, '5', '2026-10-31', 'Fever / Headache', 'pabinisaya daii!!!!', 'dutctmilk', '2026-10-31 02:13:06');
+(7, '5', '2026-10-31', 'Fever / Headache', 'pabinisaya daii!!!!', 'dutctmilk', '2026-10-31 02:13:06'),
+(8, '13', '2026-11-19', 'Dizziness', 'aspirin', 'James oliver Bastismo', '2026-11-19 13:09:55');
 
 -- --------------------------------------------------------
 
@@ -490,7 +532,8 @@ CREATE TABLE `medicine_inventory` (
 
 INSERT INTO `medicine_inventory` (`id`, `medicine_name`, `category`, `quantity`, `unit`, `reorder_level`, `expiration_date`, `supplier`, `storage_location`, `remarks`, `created_at`, `updated_at`) VALUES
 (1, 'cetirizine', 'allergy aid', 101, 'pcs', 10, '2028-11-15', 'mercury drug', 'box', '[Stock In +1 on 2026-11-19 by olivia]', '2026-10-17 05:50:56', '2026-11-19 11:39:39'),
-(2, 'biogesic', 'fever reducer', 9, 'box', 8, '2027-05-17', 'mercury drug', 'box2', '[Stock In +1 on 2026-11-19 by olivia] | [Stock In +1 on 2026-11-19 by olivia] | [Stock In +1 on 2026-11-19 by olivia] | [Stock In +1 on 2026-11-19 by olivia]', '2026-10-17 05:54:53', '2026-11-19 11:39:48');
+(2, 'biogesic', 'fever reducer', 10, 'box', 8, '2027-05-17', 'mercury drug', 'box2', '[Stock In +1 on 2026-11-19 by olivia] | [Stock In +1 on 2026-11-19 by olivia] | [Stock In +1 on 2026-11-19 by olivia] | [Stock In +1 on 2026-11-19 by olivia] | [Stock In +1 on 2026-11-19 by James oliver Bastismo]', '2026-10-17 05:54:53', '2026-11-19 13:17:07'),
+(3, 'neozep', 'colds', 18, 'pcs', 10, '2026-11-19', 'mercury drug', 'box', NULL, '2026-11-19 13:18:16', '2026-11-19 13:18:16');
 
 -- --------------------------------------------------------
 
@@ -519,7 +562,8 @@ INSERT INTO `medicine_inventory_transactions` (`id`, `medicine_id`, `movement`, 
 (2, 1, 'IN', 1, 100, 101, NULL, 'olivia', '2026-11-19 11:39:39'),
 (3, 2, 'IN', 1, 6, 7, NULL, 'olivia', '2026-11-19 11:39:41'),
 (4, 2, 'IN', 1, 7, 8, NULL, 'olivia', '2026-11-19 11:39:45'),
-(5, 2, 'IN', 1, 8, 9, NULL, 'olivia', '2026-11-19 11:39:48');
+(5, 2, 'IN', 1, 8, 9, NULL, 'olivia', '2026-11-19 11:39:48'),
+(6, 2, 'IN', 1, 9, 10, NULL, 'James oliver Bastismo', '2026-11-19 13:17:07');
 
 -- --------------------------------------------------------
 
@@ -576,6 +620,78 @@ INSERT INTO `med_cert_requests` (`id`, `student_id`, `student_id_no`, `purpose`,
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `parents`
+--
+
+CREATE TABLE `parents` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `parent_name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `parents`
+--
+
+INSERT INTO `parents` (`id`, `user_id`, `parent_name`, `email`, `created_at`) VALUES
+(1, 32, 'anita paran', 'anita@gmail.com', '2026-11-19 12:51:41');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `parent_access_requests`
+--
+
+CREATE TABLE `parent_access_requests` (
+  `id` int NOT NULL,
+  `parent_user_id` int NOT NULL,
+  `student_id_no` varchar(50) NOT NULL,
+  `relationship` varchar(60) NOT NULL,
+  `access_reason` varchar(500) NOT NULL,
+  `requested_legal_basis` varchar(80) NOT NULL,
+  `consent_attested` tinyint(1) NOT NULL DEFAULT '0',
+  `request_student_info` tinyint(1) NOT NULL DEFAULT '0',
+  `request_general_notifications` tinyint(1) NOT NULL DEFAULT '0',
+  `request_attendance_notifications` tinyint(1) NOT NULL DEFAULT '0',
+  `request_clinic_contact` tinyint(1) NOT NULL DEFAULT '0',
+  `status` varchar(20) NOT NULL DEFAULT 'Pending',
+  `allow_student_info` tinyint(1) NOT NULL DEFAULT '0',
+  `allow_general_notifications` tinyint(1) NOT NULL DEFAULT '0',
+  `allow_attendance_notifications` tinyint(1) NOT NULL DEFAULT '0',
+  `allow_clinic_contact` tinyint(1) NOT NULL DEFAULT '0',
+  `authority_verified` tinyint(1) NOT NULL DEFAULT '0',
+  `basis_verified` tinyint(1) NOT NULL DEFAULT '0',
+  `review_note` varchar(500) DEFAULT NULL,
+  `reviewed_by` int DEFAULT NULL,
+  `reviewed_name` varchar(100) DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `expires_at` date DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `parent_notifications`
+--
+
+CREATE TABLE `parent_notifications` (
+  `id` int NOT NULL,
+  `access_request_id` int NOT NULL,
+  `template_code` varchar(40) NOT NULL,
+  `title` varchar(120) NOT NULL,
+  `message` varchar(255) NOT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_by_name` varchar(100) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `read_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `staff`
 --
 
@@ -599,7 +715,7 @@ INSERT INTO `staff` (`id`, `staff_id_no`, `password`, `fullname`, `role`, `email
 (2, 'STAFF-0002', '$2y$12$w06HW0BU.RAXVM3kvDn9TukLv3CEn2HtdKid/rqVr3MqIC0xoi9mi', 'James oliver Bastismo', 'Staff', 'jamesoliverbastismo188@gmail.com', NULL, '2026-10-13 05:47:41'),
 (4, 'STAFF-0004', NULL, 'dutctmilk', 'Staff', 'dutchmilk@gmail.com', NULL, '2026-10-31 01:24:02'),
 (15, 'STAFF-0003', '$2y$12$sHCeW7l639VL6rfE/VCLheGmmArENwv0cC25B7eKTcrO6j6NC/IDK', 'brigildo', 'Teacher', 'brigildo@gmail.com', NULL, '2026-11-19 10:10:44'),
-(16, 'TEACHER-0001', '$2y$12$t8feNy6wGfHzTFos8cQKqOhV.cVi2TtznyHqr3wYJMHxljZe6JjNm', 'Alipuyo, Jinks, LPT.', 'Teacher', '', NULL, '2026-11-19 10:16:38'),
+(16, 'TEACHER-0001', '$2y$12$t8feNy6wGfHzTFos8cQKqOhV.cVi2TtznyHqr3wYJMHxljZe6JjNm', 'Alipuyo, Jinks, LPT.', 'Teacher', 'jingk@gmail.com', NULL, '2026-11-19 10:16:38'),
 (17, 'TEACHER-0002', '$2y$12$j0rh4jRQuG6yFYl/Bsffwucnjc0rm/m06rjpBx8qzVwN2n2sMuFFm', 'mayshane paran', 'Teacher', 'may@gmail.com', NULL, '2026-11-19 10:16:38');
 
 -- --------------------------------------------------------
@@ -628,18 +744,19 @@ CREATE TABLE `students` (
   `immunization_information` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
   `emergency_contact_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `emergency_contact_relationship` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `emergency_contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL
+  `emergency_contact_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `birthdate` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `students`
 --
 
-INSERT INTO `students` (`id`, `student_id_no`, `fullname`, `age`, `gender`, `course_year`, `contact`, `allergies`, `known_conditions`, `created_at`, `user_id`, `email`, `id_document`, `password`, `medical_history`, `current_medications`, `immunization_information`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_number`) VALUES
-(10, 'SCC-22-00022156', 'Kisha Nicole Paran', NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-17 08:27:10', 27, NULL, NULL, '111', NULL, NULL, NULL, NULL, NULL, NULL),
-(11, 'SCC-22-0006978', 'James oliver Bastismo', NULL, NULL, NULL, NULL, NULL, NULL, '2026-11-19 11:24:42', 31, NULL, NULL, '000', NULL, NULL, NULL, NULL, NULL, NULL),
-(12, 'SCC-22-00016716', 'Bastismo', 20, 'Male', 'BSIT-3RD YR', '09817405587', 'nn', 'nn', '2026-11-19 11:29:28', NULL, 'bas@gmail.com', NULL, '$2y$12$VJl5mEaDs3j6bocpKTUYvep8LibexWYEokoQ.QGyHM2sALhf1SPMy', 'nn', 'nn', 'nn', 'ruben', 'parent', '09553588755'),
-(13, 'scc-000', 'riji', 21, 'Male', 'BSIT-3RD YR', '098', 'nn', 'nn', '2026-11-19 11:45:07', NULL, 'riji@gmail.com', NULL, '$2y$12$BMWXh62WYwTOqsfMGaP63esa.phM9nZfCk5kXfAGdpz83K3XURmBq', 'nn', 'nn', 'nn', 'nn', 'nn', 'nn');
+INSERT INTO `students` (`id`, `student_id_no`, `fullname`, `age`, `gender`, `course_year`, `contact`, `allergies`, `known_conditions`, `created_at`, `user_id`, `email`, `id_document`, `password`, `medical_history`, `current_medications`, `immunization_information`, `emergency_contact_name`, `emergency_contact_relationship`, `emergency_contact_number`, `birthdate`) VALUES
+(10, 'SCC-22-00022156', 'Kisha Nicole Paran', 21, 'Female', 'BSIT 3RD YEAR', '09354629968', 'shrimp', 'none', '2026-11-17 08:27:10', 27, 'kishanicoleparan@gmail.com', NULL, '111', 'UTI', 'cetirizine', '', 'Anita P. Paran', 'Parent', '09658246271', NULL),
+(11, 'SCC-22-0006978', 'James oliver Bastismo', NULL, '', 'BSIT 3RD YEAR', '09364545724', 'none', 'none', '2026-11-19 11:24:42', 31, 'james@gmail.com', NULL, '000', 'none', 'none', 'none', 'Anita P. Paran', 'Parent', '09658246271', NULL),
+(12, 'SCC-22-00016716', 'Bastismo', 20, 'Male', 'BSIT-3RD YR', '09817405587', 'nn', 'nn', '2026-11-19 11:29:28', NULL, 'bas@gmail.com', NULL, '$2y$12$VJl5mEaDs3j6bocpKTUYvep8LibexWYEokoQ.QGyHM2sALhf1SPMy', 'nn', 'nn', 'nn', 'ruben', 'parent', '09553588755', NULL),
+(13, 'scc-000', 'riji', 21, 'Male', 'BSIT-3RD YR', '098', 'nn', 'nn', '2026-11-19 11:45:07', NULL, 'riji@gmail.com', NULL, '$2y$12$BMWXh62WYwTOqsfMGaP63esa.phM9nZfCk5kXfAGdpz83K3XURmBq', 'nn', 'nn', 'nn', 'nn', 'nn', 'nn', NULL);
 
 -- --------------------------------------------------------
 
@@ -679,7 +796,9 @@ CREATE TABLE `student_profile_history` (
 
 INSERT INTO `student_profile_history` (`id`, `student_id`, `student_id_no`, `snapshot_json`, `changed_by`, `change_note`, `action_type`, `created_at`) VALUES
 (1, 12, 'SCC-22-00016716', '[]', 'olivia', 'nn', 'created', '2026-11-19 11:29:28'),
-(2, 13, 'scc-000', '[]', 'olivia', '', 'created', '2026-11-19 11:45:07');
+(2, 13, 'scc-000', '[]', 'olivia', '', 'created', '2026-11-19 11:45:07'),
+(3, 11, 'SCC-22-0006978', '{\"id\":11,\"student_id_no\":\"SCC-22-0006978\",\"fullname\":\"James oliver Bastismo\",\"age\":null,\"gender\":null,\"course_year\":null,\"contact\":null,\"allergies\":null,\"known_conditions\":null,\"created_at\":\"2026-11-19 19:24:42\",\"user_id\":31,\"email\":null,\"id_document\":null,\"password\":\"000\",\"medical_history\":null,\"current_medications\":null,\"immunization_information\":null,\"emergency_contact_name\":null,\"emergency_contact_relationship\":null,\"emergency_contact_number\":null}', 'James oliver Bastismo', '', 'updated', '2026-11-19 13:53:41'),
+(4, 11, 'SCC-22-0006978', '{\"id\":11,\"student_id_no\":\"SCC-22-0006978\",\"fullname\":\"James oliver Bastismo\",\"age\":21,\"gender\":\"\",\"course_year\":\"BSIT 3RD YEAR\",\"contact\":\"09364545724\",\"allergies\":\"none\",\"known_conditions\":\"none\",\"created_at\":\"2026-11-19 19:24:42\",\"user_id\":31,\"email\":\"james@gmail.com\",\"id_document\":null,\"password\":\"000\",\"medical_history\":\"none\",\"current_medications\":\"none\",\"immunization_information\":\"none\",\"emergency_contact_name\":\"Anita P. Paran\",\"emergency_contact_relationship\":\"Parent\",\"emergency_contact_number\":\"09658246271\",\"birthdate\":null}', 'James oliver Bastismo', '', 'updated', '2026-11-19 14:01:59');
 
 -- --------------------------------------------------------
 
@@ -779,7 +898,8 @@ CREATE TABLE `teacher_pass_reviews` (
 INSERT INTO `teacher_pass_reviews` (`id`, `pass_id`, `teacher_id`, `reviewed_at`) VALUES
 (1, 1, 15, '2026-11-19 11:34:33'),
 (2, 1, 16, '2026-11-19 11:42:41'),
-(3, 3, 16, '2026-11-19 11:52:57');
+(3, 3, 16, '2026-11-19 11:52:57'),
+(4, 3, 17, '2026-11-19 13:13:41');
 
 -- --------------------------------------------------------
 
@@ -811,7 +931,8 @@ INSERT INTO `users` (`id`, `name`, `email`, `role`, `password`, `status`, `creat
 (28, 'Alipuyo, Jinks, LPT.', 'jingk@gmail.com', 'Teacher', '$2y$12$B2ExIqz2Fjq/bN23TpC2H.C.FoRQkL0rHegDeWtO1txNbPlTwA17C', 'Active', '2026-11-19 01:45:08', NULL),
 (29, 'mayshane paran', 'may@gmail.com', 'Teacher', '$2y$12$j0rh4jRQuG6yFYl/Bsffwucnjc0rm/m06rjpBx8qzVwN2n2sMuFFm', 'Active', '2026-11-19 09:07:36', NULL),
 (30, 'brigildo', 'brigildo@gmail.com', 'Teacher', '$2y$12$sHCeW7l639VL6rfE/VCLheGmmArENwv0cC25B7eKTcrO6j6NC/IDK', 'Active', '2026-11-19 10:07:19', NULL),
-(31, 'James oliver Bastismo', NULL, 'Student', '$2y$12$9PRHeN/LLbKKJ5HRe4FaNODvZ.cUH9qrBZCxjliuj1EGPUH/26QeK', 'Active', '2026-11-19 11:24:42', 'SCC-22-0006978');
+(31, 'James oliver Bastismo', 'james@gmail.com', 'Student', '$2y$12$9PRHeN/LLbKKJ5HRe4FaNODvZ.cUH9qrBZCxjliuj1EGPUH/26QeK', 'Active', '2026-11-19 11:24:42', 'SCC-22-0006978'),
+(32, 'anita paran', 'anita@gmail.com', 'Parent', '$2y$12$NWOfARclN5iWDuzy4ek7.ew3eH0RCnzbcG56iRSlJYPh5jvGwtPQq', 'Active', '2026-11-19 12:43:17', NULL);
 
 --
 -- Indexes for dumped tables
@@ -938,6 +1059,28 @@ ALTER TABLE `med_cert_requests`
   ADD UNIQUE KEY `qr_code_hash` (`qr_code_hash`);
 
 --
+-- Indexes for table `parents`
+--
+ALTER TABLE `parents`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_parents_user_id` (`user_id`);
+
+--
+-- Indexes for table `parent_access_requests`
+--
+ALTER TABLE `parent_access_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_parent_access_owner_status` (`parent_user_id`,`status`),
+  ADD KEY `idx_parent_access_student` (`student_id_no`);
+
+--
+-- Indexes for table `parent_notifications`
+--
+ALTER TABLE `parent_notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_parent_notification_access` (`access_request_id`,`created_at`);
+
+--
 -- Indexes for table `staff`
 --
 ALTER TABLE `staff`
@@ -1017,13 +1160,13 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `audit_trail`
 --
 ALTER TABLE `audit_trail`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=155;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=195;
 
 --
 -- AUTO_INCREMENT for table `clinic_passes`
 --
 ALTER TABLE `clinic_passes`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `clinic_referrals`
@@ -1041,7 +1184,7 @@ ALTER TABLE `clinic_referral_followups`
 -- AUTO_INCREMENT for table `consultations`
 --
 ALTER TABLE `consultations`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `equipment_inventory`
@@ -1077,19 +1220,37 @@ ALTER TABLE `medical_examinations`
 -- AUTO_INCREMENT for table `medicine_inventory`
 --
 ALTER TABLE `medicine_inventory`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `medicine_inventory_transactions`
 --
 ALTER TABLE `medicine_inventory_transactions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `med_cert_requests`
 --
 ALTER TABLE `med_cert_requests`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `parents`
+--
+ALTER TABLE `parents`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `parent_access_requests`
+--
+ALTER TABLE `parent_access_requests`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `parent_notifications`
+--
+ALTER TABLE `parent_notifications`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `staff`
@@ -1113,7 +1274,7 @@ ALTER TABLE `student_profile_documents`
 -- AUTO_INCREMENT for table `student_profile_history`
 --
 ALTER TABLE `student_profile_history`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `teachers`
@@ -1131,13 +1292,13 @@ ALTER TABLE `teacher_course_assignments`
 -- AUTO_INCREMENT for table `teacher_pass_reviews`
 --
 ALTER TABLE `teacher_pass_reviews`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- Constraints for dumped tables
@@ -1154,6 +1315,24 @@ ALTER TABLE `clinic_passes`
 --
 ALTER TABLE `medicine_inventory_transactions`
   ADD CONSTRAINT `fk_inventory_transactions_medicine` FOREIGN KEY (`medicine_id`) REFERENCES `medicine_inventory` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `parents`
+--
+ALTER TABLE `parents`
+  ADD CONSTRAINT `fk_parents_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `parent_access_requests`
+--
+ALTER TABLE `parent_access_requests`
+  ADD CONSTRAINT `fk_parent_access_user` FOREIGN KEY (`parent_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `parent_notifications`
+--
+ALTER TABLE `parent_notifications`
+  ADD CONSTRAINT `fk_parent_notification_access` FOREIGN KEY (`access_request_id`) REFERENCES `parent_access_requests` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `teacher_course_assignments`

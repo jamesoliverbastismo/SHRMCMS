@@ -371,8 +371,8 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | SHRCMS</title>
-    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/admin-dashboard.css?v=20261117-admin-operations">
+    <link rel="stylesheet" href="../../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Admin/admin-dashboard.css?v=20261117-admin-operations">
 </head>
 
 <body class="admin-dashboard-body">

@@ -45,6 +45,9 @@ function redirectTeacher(string $message, string $type = 'success'): void
 
 $teacherId = (int)($_SESSION['staff_id'] ?? $_SESSION['user_id'] ?? 0);
 $teacherName = $_SESSION['admin_username'] ?? 'Teacher';
+$search = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
+$search = mb_substr($search, 0, 100);
+$searchPattern = '%' . $search . '%';
 $databaseError = '';
 $assignments = [];
 $passes = [];
@@ -251,13 +254,27 @@ try {
                  ON r.pass_id = p.id AND r.teacher_id = a.teacher_id
              LEFT JOIN staff confirmer
                  ON confirmer.id = p.return_confirmed_by_teacher_id
-             WHERE a.can_view_passes = 1 OR a.can_view_authorization = 1
-                   OR a.can_view_return_records = 1 OR a.can_confirm_returns = 1
-                   OR a.can_review = 1
+             WHERE (a.can_view_passes = 1 OR a.can_view_authorization = 1
+                    OR a.can_view_return_records = 1 OR a.can_confirm_returns = 1
+                    OR a.can_review = 1)
+               AND (? = \'\'
+                    OR p.student_id_no LIKE ? OR s.fullname LIKE ?
+                    OR s.course_year LIKE ? OR p.pass_status LIKE ?
+                    OR p.authorization_status LIKE ? OR p.return_status LIKE ?)
              ORDER BY p.pass_date DESC, p.id DESC
              LIMIT 50'
         );
-        $passesStmt->bind_param('i', $teacherId);
+        $passesStmt->bind_param(
+            'isssssss',
+            $teacherId,
+            $search,
+            $searchPattern,
+            $searchPattern,
+            $searchPattern,
+            $searchPattern,
+            $searchPattern,
+            $searchPattern
+        );
         $passesStmt->execute();
         $passesResult = $passesStmt->get_result();
 
@@ -292,7 +309,7 @@ foreach ($assignments as $assignment) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard | SHRCMS</title>
-    <link rel="stylesheet" href="../../css/teacher-dashboard.css?v=20261117">
+    <link rel="stylesheet" href="../../css/Teacher/teacher-dashboard.css?v=20261117">
 </head>
 
 <body class="teacher-dashboard-body">
@@ -415,6 +432,12 @@ foreach ($assignments as $assignment) {
                             <span class="teacher-record-count"><?= number_format(count($passes)) ?> shown</span>
                         </div>
 
+                        <form method="get" action="teacher_dashboard.php" class="teacher-search-form">
+                            <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search student name, ID, or pass status" aria-label="Search clinic passes">
+                            <button type="submit">Search</button>
+                            <?php if ($search !== ''): ?><a href="teacher_dashboard.php">Clear</a><?php endif; ?>
+                        </form>
+
                         <div class="teacher-table-wrap">
                             <table class="teacher-table">
                                 <thead>
@@ -440,7 +463,7 @@ foreach ($assignments as $assignment) {
                                         <tr>
                                             <td class="teacher-empty-row"
                                                 colspan="<?= 1 + ($canViewPasses ? 2 : 0) + ($canViewAuthorization ? 1 : 0) + (($canViewReturnRecords || $canConfirmReturns) ? 1 : 0) + ($canReview ? 1 : 0) ?>">
-                                                No clinic pass records are available for your assigned classes.
+                                                <?= $search !== '' ? 'No clinic passes match your search.' : 'No clinic pass records are available for your assigned classes.' ?>
                                             </td>
                                         </tr>
                                     <?php else: ?>

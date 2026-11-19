@@ -40,8 +40,8 @@ if (!$isValid) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Certificate Verification | SHRCMS</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/medical-certificate.css">
+    <link rel="stylesheet" href="../css/Shared/style.css">
+    <link rel="stylesheet" href="../css/Shared/medical-certificate.css">
 </head>
 <body class="staff-dashboard-body">
 <main class="certificate-page certificate-verification-page">

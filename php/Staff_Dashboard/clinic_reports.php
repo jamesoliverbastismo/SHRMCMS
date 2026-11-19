@@ -401,9 +401,9 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clinic Reports - SHRCMS</title>
 
-    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/staff-dashboard.css?v=20261115-staff-admin-alignment">
-    <link rel="stylesheet" href="../../css/clinic-reports.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Staff/staff-dashboard.css?v=20261115-staff-admin-alignment">
+    <link rel="stylesheet" href="../../css/Staff/clinic-reports.css?v=20261114-icons">
 </head>
 
 <body class="staff-dashboard-body">

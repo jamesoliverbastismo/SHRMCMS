@@ -2111,7 +2111,7 @@ footer p {
             rgba(5, 45, 65, 0.88) 0%,
             rgba(5, 65, 75, 0.70) 48%,
             rgba(5, 65, 75, 0.18) 100%),
-        url("../image/clinic.jpg");
+        url("../../image/campus-clinic.jpg");
 
     background-size: cover;
     background-position: right center;
@@ -2173,7 +2173,7 @@ footer p {
             rgba(5, 45, 65, 0.88) 0%,
             rgba(5, 65, 75, 0.55) 42%,
             rgba(5, 65, 75, 0.05) 75%),
-        url("../image/clinic.png") !important;
+        url("../../image/clinic.png") !important;
 
     background-size: cover !important;
     background-position: 75% center !important;

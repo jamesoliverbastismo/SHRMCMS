@@ -41,6 +41,9 @@ $student = findLinkedStudent(
 $requests = [];
 $message = trim(is_string($_GET['message'] ?? null) ? $_GET['message'] : '');
 $messageType = ($_GET['type'] ?? '') === 'error' ? 'error' : 'success';
+$search = is_string($_GET['search'] ?? null) ? trim($_GET['search']) : '';
+$search = mb_substr($search, 0, 100);
+$searchPattern = '%' . $search . '%';
 
 $form = [
     'student_name' => (string)($student['fullname'] ?? ''),
@@ -208,9 +211,11 @@ if ($student) {
     $studentId = (int)$student['id'];
     $stmt = $conn->prepare(
         'SELECT * FROM med_cert_requests
-         WHERE student_id = ? ORDER BY id DESC'
+         WHERE student_id = ?
+           AND (? = \'\' OR purpose LIKE ? OR status LIKE ?)
+         ORDER BY id DESC'
     );
-    $stmt->bind_param('i', $studentId);
+    $stmt->bind_param('isss', $studentId, $search, $searchPattern, $searchPattern);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -225,8 +230,8 @@ if ($student) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Medical Certificate | SHRCMS</title>
-    <link rel="stylesheet" href="../../css/student-dashboard.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/student-medical-certificate.css">
+    <link rel="stylesheet" href="../../css/Student/student-dashboard.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Student/student-medical-certificate.css">
 </head>
 <body class="student-dashboard-body">
 <div class="student-layout">
@@ -395,6 +400,11 @@ if ($student) {
                     <div class="student-medical-heading">
                         <div><h2>My Requests</h2><p>After staff completes your physical examination and approves the request, print your certificate here.</p></div>
                     </div>
+                    <form method="get" action="student_medical_certificate.php" class="student-medical-search">
+                        <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search request purpose or status" aria-label="Search medical certificate requests">
+                        <button class="student-medical-button" type="submit">Search</button>
+                        <?php if ($search !== ''): ?><a class="student-medical-search-clear" href="student_medical_certificate.php">Clear</a><?php endif; ?>
+                    </form>
                     <div class="student-medical-table-wrap">
                         <table class="student-table student-medical-table">
                             <thead><tr><th>Requested</th><th>Purpose</th><th>Status</th><th>Next step</th></tr></thead>
@@ -417,7 +427,7 @@ if ($student) {
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="4" class="student-empty">No medical certificate requests yet.</td></tr>
+                                <tr><td colspan="4" class="student-empty"><?= $search !== '' ? 'No medical certificate requests match your search.' : 'No medical certificate requests yet.' ?></td></tr>
                             <?php endif; ?>
                             </tbody>
                         </table>

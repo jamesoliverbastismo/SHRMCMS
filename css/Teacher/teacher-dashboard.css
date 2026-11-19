@@ -427,6 +427,54 @@ body.teacher-dashboard-body {
     font-weight: 600;
 }
 
+.teacher-search-form {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 21px 16px;
+}
+
+.teacher-search-form input {
+    flex: 1;
+    min-width: 0;
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 1px solid var(--teacher-border);
+    border-radius: 5px;
+    color: var(--teacher-text);
+    font: inherit;
+}
+
+.teacher-search-form button,
+.teacher-search-form a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 13px;
+    border: 0;
+    border-radius: 5px;
+    background: var(--teacher-blue);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.teacher-search-form a {
+    background: #eff4fc;
+    color: #486487;
+}
+
+.teacher-search-form input:focus-visible,
+.teacher-search-form button:focus-visible,
+.teacher-search-form a:focus-visible {
+    outline: 3px solid #66b2ff;
+    outline-offset: 2px;
+}
+
 .teacher-table-wrap {
     width: 100%;
     overflow-x: auto;

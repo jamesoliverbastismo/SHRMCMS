@@ -114,8 +114,8 @@ $totalRecords = count($records);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Health Records | SHRCMS</title>
-    <link rel="stylesheet" href="../../css/student-dashboard.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/student-health-records.css">
+    <link rel="stylesheet" href="../../css/Student/student-dashboard.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Student/student-health-records.css">
 </head>
 
 <body class="student-dashboard-body">

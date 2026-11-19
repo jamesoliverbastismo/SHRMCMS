@@ -30,6 +30,26 @@ function e($value): string
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
+function calculateAgeFromBirthdate(?string $birthdate): ?int
+{
+    $birthdate = trim((string)($birthdate ?? ''));
+    if ($birthdate === '') {
+        return null;
+    }
+
+    $dt = DateTime::createFromFormat('Y-m-d', $birthdate);
+    if (!$dt || $dt->format('Y-m-d') !== $birthdate) {
+        return null;
+    }
+
+    $today = new DateTime('today');
+    if ($dt > $today) {
+        return null;
+    }
+
+    return $dt->diff($today)->y;
+}
+
 if (empty($_SESSION['student_profile_csrf'])) {
     $_SESSION['student_profile_csrf'] = bin2hex(random_bytes(32));
 }
@@ -50,6 +70,7 @@ function ensureStudentProfileSchema(mysqli $conn): void
     }
 
     $definitions = [
+        'birthdate' => 'DATE NULL',
         'medical_history' => 'TEXT NULL',
         'current_medications' => 'TEXT NULL',
         'immunization_information' => 'TEXT NULL',
@@ -170,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $id === false ? 0 : (int)$id;
             $studentIdNo = trim((string)($_POST['student_id_no'] ?? ''));
             $fullname = trim((string)($_POST['fullname'] ?? ''));
-            $age = trim((string)($_POST['age'] ?? ''));
+            $birthdate = trim((string)($_POST['birthdate'] ?? ''));
             $gender = trim((string)($_POST['gender'] ?? ''));
             $courseYear = trim((string)($_POST['course_year'] ?? ''));
             $contact = trim((string)($_POST['contact'] ?? ''));
@@ -184,14 +205,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $emergencyContactRelationship = trim((string)($_POST['emergency_contact_relationship'] ?? ''));
             $emergencyContactNumber = trim((string)($_POST['emergency_contact_number'] ?? ''));
             $changeNote = trim((string)($_POST['change_note'] ?? ''));
-            $ageValue = $age === '' ? null : filter_var($age, FILTER_VALIDATE_INT);
+
+            $birthdateValue = $birthdate !== '' ? $birthdate : null;
+            $ageValue = $birthdateValue !== null ? calculateAgeFromBirthdate($birthdateValue) : null;
 
             if ($id < 0 || $studentIdNo === '' || $fullname === '') {
                 $errorMsg = 'Student ID number and full name are required.';
             } elseif (strlen($studentIdNo) > 50 || strlen($fullname) > 100) {
                 $errorMsg = 'Student ID number or full name exceeds the allowed length.';
-            } elseif ($age !== '' && ($ageValue === false || $ageValue < 1 || $ageValue > 150)) {
-                $errorMsg = 'Please enter a valid age.';
+            } elseif ($birthdate !== '' && $ageValue === null) {
+                $errorMsg = 'Please enter a valid birthdate (not in the future).';
+            } elseif ($ageValue !== null && ($ageValue < 1 || $ageValue > 150)) {
+                $errorMsg = 'Calculated age is outside the allowed range.';
             } elseif ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100)) {
                 $errorMsg = 'Please enter a valid email address.';
             } else {
@@ -218,8 +243,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $duplicate = $check->get_result()->fetch_assoc();
                         $check->close();
 
+                        $userEmailDuplicate = false;
+                        if (!$duplicate && $id > 0) {
+                            $linkedUserStmt = $conn->prepare('SELECT user_id FROM students WHERE id=? LIMIT 1');
+                            $linkedUserStmt->bind_param('i', $id);
+                            $linkedUserStmt->execute();
+                            $linkedUserId = (int)($linkedUserStmt->get_result()->fetch_assoc()['user_id'] ?? 0);
+                            $linkedUserStmt->close();
+
+                            if ($linkedUserId > 0) {
+                                $userEmailCheck = $conn->prepare('SELECT id FROM users WHERE email=? AND id<>? LIMIT 1');
+                                $userEmailCheck->bind_param('si', $email, $linkedUserId);
+                                $userEmailCheck->execute();
+                                $userEmailDuplicate = (bool)$userEmailCheck->get_result()->fetch_assoc();
+                                $userEmailCheck->close();
+                            }
+                        }
+
                         if ($duplicate) {
                             $errorMsg = 'This student ID or email is already registered.';
+                        } elseif ($userEmailDuplicate) {
+                            $errorMsg = 'This email address is already in use by another account.';
                         } else {
                             if ($id > 0) {
                                 $oldStmt = $conn->prepare('SELECT * FROM students WHERE id=? LIMIT 1');
@@ -231,17 +275,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $errorMsg = 'Student profile not found.';
                                 } else {
                                     $stmt = $uploadedDoc === null
-                                        ? $conn->prepare('UPDATE students SET student_id_no=?, fullname=?, age=?, gender=?, course_year=?, contact=?, email=?, allergies=?, known_conditions=?, medical_history=?, current_medications=?, immunization_information=?, emergency_contact_name=?, emergency_contact_relationship=?, emergency_contact_number=? WHERE id=?')
-                                        : $conn->prepare('UPDATE students SET student_id_no=?, fullname=?, age=?, gender=?, course_year=?, contact=?, email=?, allergies=?, known_conditions=?, medical_history=?, current_medications=?, immunization_information=?, emergency_contact_name=?, emergency_contact_relationship=?, emergency_contact_number=?, id_document=? WHERE id=?');
+                                        ? $conn->prepare('UPDATE students SET student_id_no=?, fullname=?, birthdate=?, age=?, gender=?, course_year=?, contact=?, email=?, allergies=?, known_conditions=?, medical_history=?, current_medications=?, immunization_information=?, emergency_contact_name=?, emergency_contact_relationship=?, emergency_contact_number=? WHERE id=?')
+                                        : $conn->prepare('UPDATE students SET student_id_no=?, fullname=?, birthdate=?, age=?, gender=?, course_year=?, contact=?, email=?, allergies=?, known_conditions=?, medical_history=?, current_medications=?, immunization_information=?, emergency_contact_name=?, emergency_contact_relationship=?, emergency_contact_number=?, id_document=? WHERE id=?');
                                     if ($uploadedDoc === null) {
-                                        $stmt->bind_param('ssissssssssssssi', $studentIdNo, $fullname, $ageValue, $gender, $courseYear, $contact, $email, $allergies, $knownConditions, $medicalHistory, $currentMedications, $immunizationInformation, $emergencyContactName, $emergencyContactRelationship, $emergencyContactNumber, $id);
+                                        $stmt->bind_param('sssissssssssssssi', $studentIdNo, $fullname, $birthdateValue, $ageValue, $gender, $courseYear, $contact, $email, $allergies, $knownConditions, $medicalHistory, $currentMedications, $immunizationInformation, $emergencyContactName, $emergencyContactRelationship, $emergencyContactNumber, $id);
                                     } else {
-                                        $stmt->bind_param('ssissssssssssssis', $studentIdNo, $fullname, $ageValue, $gender, $courseYear, $contact, $email, $allergies, $knownConditions, $medicalHistory, $currentMedications, $immunizationInformation, $emergencyContactName, $emergencyContactRelationship, $emergencyContactNumber, $uploadedDoc, $id);
+                                        $stmt->bind_param('sssissssssssssssis', $studentIdNo, $fullname, $birthdateValue, $ageValue, $gender, $courseYear, $contact, $email, $allergies, $knownConditions, $medicalHistory, $currentMedications, $immunizationInformation, $emergencyContactName, $emergencyContactRelationship, $emergencyContactNumber, $uploadedDoc, $id);
                                     }
                                 }
                             } else {
-                                $stmt = $conn->prepare('INSERT INTO students (student_id_no, fullname, age, gender, course_year, contact, email, allergies, known_conditions, medical_history, current_medications, immunization_information, emergency_contact_name, emergency_contact_relationship, emergency_contact_number, id_document) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                                $stmt->bind_param('ssisssssssssssss', $studentIdNo, $fullname, $ageValue, $gender, $courseYear, $contact, $email, $allergies, $knownConditions, $medicalHistory, $currentMedications, $immunizationInformation, $emergencyContactName, $emergencyContactRelationship, $emergencyContactNumber, $uploadedDoc);
+                                $stmt = $conn->prepare('INSERT INTO students (student_id_no, fullname, birthdate, age, gender, course_year, contact, email, allergies, known_conditions, medical_history, current_medications, immunization_information, emergency_contact_name, emergency_contact_relationship, emergency_contact_number, id_document) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                                $stmt->bind_param('sssisssssssssssss', $studentIdNo, $fullname, $birthdateValue, $ageValue, $gender, $courseYear, $contact, $email, $allergies, $knownConditions, $medicalHistory, $currentMedications, $immunizationInformation, $emergencyContactName, $emergencyContactRelationship, $emergencyContactNumber, $uploadedDoc);
                             }
 
                             if ($errorMsg === '' && $stmt->execute()) {
@@ -349,7 +393,7 @@ if ($editing) {
     $documentStmt->close();
 }
 
-$sql = 'SELECT id, student_id_no, fullname, age, gender, course_year, contact, email, allergies, known_conditions, id_document, created_at FROM students';
+$sql = 'SELECT id, student_id_no, fullname, birthdate, age, gender, course_year, contact, email, allergies, known_conditions, id_document, created_at FROM students';
 $params = [];
 $types = '';
 if ($search !== '') {
@@ -367,6 +411,12 @@ $listStmt->execute();
 $studentResult = $listStmt->get_result();
 $countResult = $conn->query('SELECT COUNT(*) AS total FROM students');
 $totalStudents = (int)($countResult->fetch_assoc()['total'] ?? 0);
+
+$displayAge = '';
+if ($editing) {
+    $computedEditAge = calculateAgeFromBirthdate($editing['birthdate'] ?? null);
+    $displayAge = $computedEditAge !== null ? (string)$computedEditAge : (string)($editing['age'] ?? '');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -374,8 +424,8 @@ $totalStudents = (int)($countResult->fetch_assoc()['total'] ?? 0);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Profiles - SHRCMS</title>
-    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/staff-dashboard.css?v=20261119-student-profiles">
+    <link rel="stylesheet" href="../../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Staff/staff-dashboard.css?v=20261119-student-profiles">
 </head>
 <body class="staff-dashboard-body">
     <aside class="staff-sidebar">
@@ -435,7 +485,8 @@ $totalStudents = (int)($countResult->fetch_assoc()['total'] ?? 0);
                 <div class="sp-form-grid">
                     <div class="sp-field"><label for="student_id_no">Student ID Number <span>*</span></label><input id="student_id_no" name="student_id_no" maxlength="50" required value="<?= e($editing['student_id_no'] ?? '') ?>" placeholder="e.g. SCC-22-00022156"></div>
                     <div class="sp-field"><label for="fullname">Full Name <span>*</span></label><input id="fullname" name="fullname" maxlength="100" required value="<?= e($editing['fullname'] ?? '') ?>" placeholder="Student full name"></div>
-                    <div class="sp-field"><label for="age">Age</label><input id="age" name="age" type="number" min="1" max="150" value="<?= e($editing['age'] ?? '') ?>"></div>
+                    <div class="sp-field"><label for="birthdate">Birthdate</label><input id="birthdate" name="birthdate" type="date" max="<?= date('Y-m-d') ?>" value="<?= e($editing['birthdate'] ?? '') ?>"></div>
+                    <div class="sp-field"><label for="age">Age (Auto-calculated)</label><input id="age" name="age" type="number" readonly tabindex="-1" value="<?= e($displayAge) ?>" placeholder="Auto from birthdate"></div>
                     <div class="sp-field"><label for="gender">Gender</label><select id="gender" name="gender"><option value="">Select gender</option><?php foreach (['Female', 'Male', 'Other'] as $gender): ?><option value="<?= e($gender) ?>" <?= (($editing['gender'] ?? '') === $gender) ? 'selected' : '' ?>><?= e($gender) ?></option><?php endforeach; ?></select></div>
                     <div class="sp-field"><label for="course_year">Course / Year / Grade</label><input id="course_year" name="course_year" maxlength="50" value="<?= e($editing['course_year'] ?? '') ?>" placeholder="e.g. BSIT - 2nd Year"></div>
                     <div class="sp-field"><label for="contact">Contact Number</label><input id="contact" name="contact" maxlength="20" value="<?= e($editing['contact'] ?? '') ?>" placeholder="e.g. 09123456789"></div>
@@ -467,68 +518,94 @@ $totalStudents = (int)($countResult->fetch_assoc()['total'] ?? 0);
                                 <strong><?= e($document['document_name']) ?></strong>
                                 <p>Uploaded by <?= e($document['uploaded_by'] ?: 'Clinic Staff') ?> · <?= e(date('M d, Y h:i A', strtotime($document['created_at']))) ?></p>
                             </div>
-                            <a class="sp-button sp-button-light" href="../../<?= e($document['file_path']) ?>" target="_blank">View Document</a>
+                            <a class="sp-button sp-button-light" href="../../<?= e($document['file_path']) ?>" target="_blank">View File</a>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <p class="sp-empty">No supporting documents uploaded.</p>
+                    <p class="sp-empty">No supporting documents uploaded yet.</p>
                 <?php endif; ?>
             </div>
         </section>
 
         <section class="sp-panel">
-            <div class="sp-panel-heading"><div><h2>Profile Update History</h2><p>Previous profile snapshots are retained after authorized changes.</p></div></div>
+            <div class="sp-panel-heading"><div><h2>Profile Update History</h2><p>Recent snapshots saved when this student profile was modified.</p></div></div>
             <div class="sp-history">
                 <?php if ($profileHistory): ?>
-                    <?php foreach ($profileHistory as $history): ?>
+                    <?php foreach ($profileHistory as $entry): ?>
                         <div class="sp-history-item">
                             <div>
-                                <strong><?= ucfirst(e($history['action_type'])) ?></strong>
-                                <p><?= e($history['change_note'] ?: 'No update note provided') ?></p>
-                                <small>By <?= e($history['changed_by'] ?: 'Clinic Staff') ?> · <?= e(date('M d, Y h:i A', strtotime($history['created_at']))) ?></small>
+                                <strong><?= e(ucfirst((string)$entry['action_type'])) ?> by <?= e($entry['changed_by'] ?: 'Clinic Staff') ?></strong>
+                                <p><?= e($entry['change_note'] ?: 'No update note provided.') ?> · <?= e(date('M d, Y h:i A', strtotime($entry['created_at']))) ?></p>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <p class="sp-empty">No update history available.</p>
+                    <p class="sp-empty">No history records found for this profile.</p>
                 <?php endif; ?>
             </div>
         </section>
         <?php endif; ?>
 
         <section class="sp-panel">
-            <div class="sp-panel-heading sp-list-heading">
-                <div><h2>Student Profile List</h2><p>Search and manage registered student profiles.</p></div>
-                <form class="sp-search" method="GET" action="student_profiles.php">
-                    <input type="search" name="search" value="<?= e($search) ?>" placeholder="Search ID, name, course, contact..." aria-label="Search student profiles">
-                    <button type="submit" class="sp-button sp-button-primary">Search</button>
-                    <?php if ($search !== ''): ?><a href="student_profiles.php" class="sp-button sp-button-light">Clear</a><?php endif; ?>
+            <div class="sp-panel-heading">
+                <div><h2>Registered Student Profiles</h2><p>Search and manage student records.</p></div>
+                <form method="GET" action="student_profiles.php" class="sp-search">
+                    <input type="text" name="search" value="<?= e($search) ?>" placeholder="Search ID, name, course, contact, email...">
+                    <button type="submit" class="sp-button sp-button-light">Search</button>
+                    <?php if ($search !== ''): ?><a class="sp-button sp-button-light" href="student_profiles.php">Reset</a><?php endif; ?>
                 </form>
             </div>
             <div class="sp-table-wrap">
                 <table class="sp-table">
-                    <thead><tr><th>Student ID</th><th>Full Name</th><th>Course / Year</th><th>Contact</th><th>Email</th><th>ID File</th><th>Actions</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Full Name</th>
+                            <th>Birthdate</th>
+                            <th>Age</th>
+                            <th>Gender</th>
+                            <th>Course / Year</th>
+                            <th>Contact</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                    <?php if ($studentResult->num_rows > 0): ?>
-                        <?php while ($student = $studentResult->fetch_assoc()): ?>
-                            <tr>
-                                <td><strong><?= e($student['student_id_no']) ?></strong></td>
-                                <td><?= e($student['fullname']) ?></td>
-                                <td><?= e($student['course_year'] ?: '—') ?></td>
-                                <td><?= e($student['contact'] ?: '—') ?></td>
-                                <td><?= e($student['email'] ?: '—') ?></td>
-                                <td><?php if (!empty($student['id_document'])): ?><a href="../../<?= e($student['id_document']) ?>" target="_blank">View File</a><?php else: ?>—<?php endif; ?></td>
-                                <td><div class="sp-row-actions"><a class="sp-edit" href="student_profiles.php?edit=<?= (int)$student['id'] ?>#student-profile-form">Edit</a><form method="POST" action="student_profiles.php" onsubmit="return confirm('Delete this student profile? This cannot be undone.');"><input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$student['id'] ?>"><button type="submit" class="sp-delete">Delete</button></form></div></td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="7" class="sp-empty">No student profiles found<?= $search !== '' ? ' for this search.' : '.' ?></td></tr>
-                    <?php endif; ?>
+                        <?php if ($studentResult && $studentResult->num_rows > 0): ?>
+                            <?php while ($row = $studentResult->fetch_assoc()): ?>
+                                <?php
+                                $rowComputedAge = calculateAgeFromBirthdate($row['birthdate'] ?? null);
+                                $rowAgeDisplay = $rowComputedAge !== null ? (string)$rowComputedAge : (string)($row['age'] ?? '-');
+                                ?>
+                                <tr>
+                                    <td><?= e($row['student_id_no']) ?></td>
+                                    <td><?= e($row['fullname']) ?></td>
+                                    <td><?= e($row['birthdate'] ?: '-') ?></td>
+                                    <td><?= e($rowAgeDisplay) ?></td>
+                                    <td><?= e($row['gender'] ?: '-') ?></td>
+                                    <td><?= e($row['course_year'] ?: '-') ?></td>
+                                    <td><?= e($row['contact'] ?: '-') ?></td>
+                                    <td><?= e($row['email'] ?: '-') ?></td>
+                                    <td class="sp-actions">
+                                        <a class="sp-button sp-button-light" href="student_profiles.php?edit=<?= (int)$row['id'] ?>#student-profile-form">Edit</a>
+                                        <form method="POST" action="student_profiles.php" class="sp-inline-form" onsubmit="return confirm('Delete this student profile?');">
+                                            <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
+                                            <button type="submit" class="sp-button sp-button-danger">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr><td colspan="9" class="sp-empty">No student profiles found.</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </section>
     </main>
+    <script src="../../js/student_profile_age.js"></script>
+</body>
 </body>
 </html>
-<?php $listStmt->close(); $conn->close(); ?>

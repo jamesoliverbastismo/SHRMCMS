@@ -131,8 +131,8 @@ $sidebarColor = $settings['sidebar_color'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Settings | SHRCMS</title>
-    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/admin-dashboard.css?v=20261115-admin-menu-cleanup">
+    <link rel="stylesheet" href="../../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Admin/admin-dashboard.css?v=20261115-admin-menu-cleanup">
 
     <style>
         :root {
@@ -140,7 +140,7 @@ $sidebarColor = $settings['sidebar_color'];
             --admin-sidebar: <?= e($sidebarColor) ?>;
         }
     </style>
-    <link rel="stylesheet" href="../../css/system-settings.css">
+    <link rel="stylesheet" href="../../css/Admin/system-settings.css">
 </head>
 
 <body class="admin-dashboard-body">

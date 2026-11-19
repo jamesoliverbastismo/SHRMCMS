@@ -162,9 +162,9 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Set a New Password | SHRCMS</title>
-    <link rel="stylesheet" href="../css/style.css?v=20261114-login-height">
+    <link rel="stylesheet" href="../css/Shared/style.css?v=20261114-login-height">
 
-    <link rel="stylesheet" href="../css/change-initial-password.css">
+    <link rel="stylesheet" href="../css/Authentication/change-initial-password.css">
 </head>
 
 <body class="login-wrapper">

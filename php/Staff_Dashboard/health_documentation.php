@@ -431,9 +431,9 @@ if ($searchTerm === '') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Health Documentation | SHRCMS</title>
 
-    <link rel="stylesheet" href="../../css/style.css?v=20261114-icons">
-    <link rel="stylesheet" href="../../css/staff-dashboard.css?v=20261115-staff-brand-alignment">
-    <link rel="stylesheet" href="../../css/health-documentation.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Shared/style.css?v=20261114-icons">
+    <link rel="stylesheet" href="../../css/Staff/staff-dashboard.css?v=20261115-staff-brand-alignment">
+    <link rel="stylesheet" href="../../css/Staff/health-documentation.css?v=20261114-icons">
 
 </head>
 
