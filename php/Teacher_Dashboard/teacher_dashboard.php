@@ -36,7 +36,7 @@ function redirectTeacher(string $message, string $type = 'success'): void
 {
     header(
         'Location: teacher_dashboard.php?message=' .
-        urlencode($message) . '&type=' . urlencode($type)
+            urlencode($message) . '&type=' . urlencode($type)
     );
     exit();
 }
@@ -135,13 +135,13 @@ try {
     if ($assignments) {
         $summaryStmt = $conn->prepare(
             'SELECT
-                COUNT(IF(a.can_view_passes = 1, 1, NULL)) AS visible_passes,
-                COUNT(IF(a.can_view_passes = 1
-                         AND DATE(p.pass_date) = CURDATE(), 1, NULL)) AS todays_passes,
-                COUNT(IF(a.can_view_authorization = 1
-                         AND p.authorization_status = \'Pending\', 1, NULL)) AS pending_authorization,
-                COUNT(IF(a.can_view_return_records = 1
-                         AND p.return_status = \'Pending\', 1, NULL)) AS pending_returns
+                COUNT(DISTINCT IF(a.can_view_passes = 1, p.id, NULL)) AS visible_passes,
+                COUNT(DISTINCT IF(a.can_view_passes = 1
+                         AND DATE(p.pass_date) = CURDATE(), p.id, NULL)) AS todays_passes,
+                COUNT(DISTINCT IF(a.can_view_authorization = 1
+                         AND p.authorization_status = \'Pending\', p.id, NULL)) AS pending_authorization,
+                COUNT(DISTINCT IF(a.can_view_return_records = 1
+                         AND p.return_status = \'Pending\', p.id, NULL)) AS pending_returns
              FROM clinic_passes p
              INNER JOIN students s
                  ON s.student_id_no COLLATE utf8mb4_unicode_ci =
@@ -234,7 +234,7 @@ foreach ($assignments as $assignment) {
                     <span>Dashboard</span>
                 </a>
                 <a class="teacher-nav-link" href="../logout.php"
-                   onclick="return confirm('Are you sure you want to log out?');">
+                    onclick="return confirm('Are you sure you want to log out?');">
                     <img src="../../image/icon-logout.svg" alt="" aria-hidden="true">
                     <span>Log Out</span>
                 </a>
@@ -265,7 +265,7 @@ foreach ($assignments as $assignment) {
             <section class="teacher-content">
                 <?php if ($message !== ''): ?>
                     <div class="teacher-alert <?= $messageType === 'error' ? 'is-error' : 'is-success' ?>"
-                         role="<?= $messageType === 'error' ? 'alert' : 'status' ?>">
+                        role="<?= $messageType === 'error' ? 'alert' : 'status' ?>">
                         <?= e($message) ?>
                     </div>
                 <?php endif; ?>

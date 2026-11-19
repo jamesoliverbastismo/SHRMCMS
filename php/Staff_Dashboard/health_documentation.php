@@ -46,7 +46,7 @@ function goBack(string $message, string $type = 'success'): void
 {
     header(
         'Location: health_documentation.php?message=' .
-        urlencode($message) . '&type=' . urlencode($type)
+            urlencode($message) . '&type=' . urlencode($type)
     );
     exit();
 }
@@ -69,8 +69,10 @@ $messageType = ($_GET['type'] ?? '') === 'error' ? 'error' : 'success';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
 
-    if (!is_string($token) ||
-        !hash_equals($_SESSION['csrf_token'], $token)) {
+    if (
+        !is_string($token) ||
+        !hash_equals($_SESSION['csrf_token'], $token)
+    ) {
         goBack('Invalid form submission. Refresh and try again.', 'error');
     }
 
@@ -273,15 +275,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        foreach ([
-            'Allergies' => [$allergies, 2000],
-            'Current medications' => [$currentMedications, 2000],
-            'Medical history' => [$medicalHistory, 3000],
-            'Other family history' => [$familyOther, 2000],
-            'Physical findings' => [$physicalFindings, 5000],
-            'Staff assessment' => [$diagnosis, 3000],
-            'Recommendations' => [$recommendation, 3000]
-        ] as $label => [$value, $limit]) {
+        foreach (
+            [
+                'Allergies' => [$allergies, 2000],
+                'Current medications' => [$currentMedications, 2000],
+                'Medical history' => [$medicalHistory, 3000],
+                'Other family history' => [$familyOther, 2000],
+                'Physical findings' => [$physicalFindings, 5000],
+                'Staff assessment' => [$diagnosis, 3000],
+                'Recommendations' => [$recommendation, 3000]
+            ] as $label => [$value, $limit]
+        ) {
             if (mb_strlen($value) > $limit) {
                 goBack($label . ' exceeds the allowed length.', 'error');
             }
@@ -291,11 +295,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             goBack('Enter the physical examination findings before generating the certificate.', 'error');
         }
 
-        foreach ([
-            'Height' => [$heightInput, 30, 250],
-            'Weight' => [$weightInput, 1, 500],
-            'Temperature' => [$temperatureInput, 25, 45]
-        ] as $label => [$value, $minimum, $maximum]) {
+        foreach (
+            [
+                'Height' => [$heightInput, 30, 250],
+                'Weight' => [$weightInput, 1, 500],
+                'Temperature' => [$temperatureInput, 25, 45]
+            ] as $label => [$value, $minimum, $maximum]
+        ) {
             if (
                 $value !== '' &&
                 (!is_numeric($value) || (float)$value < $minimum || (float)$value > $maximum)
@@ -380,7 +386,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             goBack('The walk-in certificate could not be saved. Check the student details and try again.', 'error');
         }
     }
-
 }
 
 $searchTerm = isset($_GET['search']) && is_string($_GET['search'])
@@ -418,6 +423,7 @@ if ($searchTerm === '') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -428,347 +434,362 @@ if ($searchTerm === '') {
     <link rel="stylesheet" href="../../css/health-documentation.css?v=20261114-icons">
 
 </head>
+
 <body class="staff-dashboard-body">
 
-<aside class="staff-sidebar">
-    <div class="staff-brand">
-        <img src="../../image/logo2.png" alt="SHRCMS Logo">
-        <div>
-            <strong>SHRCMS</strong>
-            <span>Clinic Management</span>
-        </div>
-    </div>
-
-    <nav class="staff-nav">
-        <p class="staff-nav-label">MAIN MENU</p>
-        <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
-        <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
-        <a href="health_documentation.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
-        <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
-
-        <p class="staff-nav-label">REPORTS</p>
-        <a href="clinic_reports.php"><span><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"></span> Clinic Reports</a>
-    </nav>
-
-    <a href="../logout.php" class="staff-logout" onclick="return confirm('Are you sure you want to log out?');">
-        <img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"> Log Out
-    </a>
-</aside>
-
-<main class="staff-main">
-    <header class="staff-header">
-        <div>
-            <p class="staff-eyebrow">CLINIC MANAGEMENT</p>
-            <h1>Health Documentation</h1>
-            <p class="staff-header-subtitle">
-                Review certificate requests, complete physical exams, and generate QR-verified certificates.
-            </p>
-            <a class="hd-button hd-button-primary" href="#walk-in-certificate">Add Med Cert</a>
-        </div>
-
-        <div class="staff-user">
-            <img src="../../image/logo2.png" alt="Staff profile">
+    <aside class="staff-sidebar">
+        <div class="staff-brand">
+            <img src="../../image/logo2.png" alt="SHRCMS Logo">
             <div>
-                <strong><?= e($username) ?></strong>
-                <small>Clinic Staff</small>
+                <strong>SHRCMS</strong>
+                <span>Clinic Management</span>
             </div>
         </div>
-    </header>
 
-    <section class="hd-content">
+        <nav class="staff-nav">
+            <p class="staff-nav-label">MAIN MENU</p>
+            <a href="staff_dashboard.php"><span><img class="ui-icon" src="../../image/icon-dashboard.svg" alt="" aria-hidden="true"></span> Dashboard</a>
+            <a href="clinic_consultation.php"><span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation</a>
+            <a href="clinic_operations.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Passes, Referrals &amp; Incidents</a>
+            <a href="health_documentation.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation</a>
+            <a href="scan_medical_certificate.php"><span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate</a>
+            <a href="medicine_inventory.php">
+                <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medicine Inventory
+            </a>
 
-        <?php if ($message !== ''): ?>
-            <div class="hd-alert <?= $messageType === 'error' ? 'hd-alert-error' : 'hd-alert-success' ?>">
-                <?= e($message) ?>
+            <p class="staff-nav-label">REPORTS</p>
+            <a href="clinic_reports.php"><span><img class="ui-icon" src="../../image/icon-reports.svg" alt="" aria-hidden="true"></span> Clinic Reports</a>
+        </nav>
+
+        <a href="../logout.php" class="staff-logout" onclick="return confirm('Are you sure you want to log out?');">
+            <img class="ui-icon" src="../../image/icon-logout.svg" alt="" aria-hidden="true"> Log Out
+        </a>
+    </aside>
+
+    <main class="staff-main">
+        <header class="staff-header">
+            <div>
+                <p class="staff-eyebrow">CLINIC MANAGEMENT</p>
+                <h1>Health Documentation</h1>
+                <p class="staff-header-subtitle">
+                    Review certificate requests, complete physical exams, and generate QR-verified certificates.
+                </p>
+                <a class="hd-button hd-button-primary" href="#walk-in-certificate">Add Med Cert</a>
             </div>
-        <?php endif; ?>
 
-        <!-- SECTION 1: MEDICAL CERTIFICATE REQUESTS FROM STUDENTS -->
-        <section class="hd-panel" style="margin-bottom: 30px;">
-            <div class="hd-panel-heading">
+            <div class="staff-user">
+                <img src="../../image/logo2.png" alt="Staff profile">
                 <div>
-                    <h2><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"> Student Medical Certificate Requests</h2>
-                    <p>Review student-submitted health information, complete the physical examination during the clinic visit, and approve printable QR-verified certificates.</p>
+                    <strong><?= e($username) ?></strong>
+                    <small>Clinic Staff</small>
                 </div>
-                <form method="GET" action="health_documentation.php" class="hd-search">
-                    <input
-                        type="search"
-                        name="search"
-                        value="<?= e($searchTerm) ?>"
-                        placeholder="Search name, ID, purpose, or status"
-                        aria-label="Search medical certificate requests">
-                    <button type="submit" class="hd-button hd-button-primary">Search</button>
-                    <?php if ($searchTerm !== ''): ?>
-                        <a class="hd-button hd-button-light" href="health_documentation.php">Clear</a>
-                    <?php endif; ?>
-                </form>
             </div>
+        </header>
 
-            <div class="hd-table-wrap">
-                <table class="hd-table">
-                    <thead>
-                        <tr>
-                            <th>Student Details</th>
-                            <th>Purpose</th>
-                            <th>Date Requested</th>
-                            <th>Status</th>
-                            <th>Action / Management</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($medCertRequests && $medCertRequests->num_rows > 0): ?>
-                            <?php while ($r = $medCertRequests->fetch_assoc()): ?>
-                                <tr>
-                                    <td>
-                                        <strong><?= e($r['request_student_name'] ?: 'Student') ?></strong><br>
-                                        <small><?= e($r['student_id_no']) ?> | <?= e($r['request_course_year'] ?: 'N/A') ?></small>
-                                        <details class="hd-request-details" open>
-                                            <summary>Student-submitted information (click to collapse)</summary>
-                                            <dl>
-                                                <dt>Age / gender</dt><dd><?= e($r['age'] ?: 'Not provided') ?> / <?= e($r['gender'] ?: 'Not provided') ?></dd>
-                                                <dt>Contact</dt><dd><?= e($r['contact'] ?: 'Not provided') ?></dd>
-                                                <dt>Email</dt><dd><?= e($r['email'] ?: 'Not provided') ?></dd>
-                                                <dt>Allergies</dt><dd><?= nl2br(e($r['allergies'] ?: 'Not provided')) ?></dd>
-                                                <dt>Current medications</dt><dd><?= nl2br(e($r['current_medications'] ?: 'Not provided')) ?></dd>
-                                                <dt>Medical history</dt><dd><?= nl2br(e($r['medical_history'] ?: 'Not provided')) ?></dd>
-                                                <dt>Menstrual history</dt><dd><?= e($r['menstrual_history'] ?: 'Not provided') ?></dd>
-                                                <dt>Alcohol / tobacco</dt><dd><?= e($r['alcohol_use'] ?: 'Not provided') ?> / <?= e($r['tobacco_use'] ?: 'Not provided') ?></dd>
-                                                <dt>Family history</dt><dd>TB: <?= e($r['family_history_tuberculosis'] ?: 'Not provided') ?>; high blood pressure: <?= e($r['family_history_hypertension'] ?: 'Not provided') ?>; diabetes: <?= e($r['family_history_diabetes'] ?: 'Not provided') ?>; heart disease: <?= e($r['family_history_heart_disease'] ?: 'Not provided') ?>; other: <?= nl2br(e($r['family_history_other'] ?: 'Not provided')) ?></dd>
-                                            </dl>
-                                        </details>
-                                    </td>
-                                    <td><?= e($r['purpose']) ?></td>
-                                    <td><?= e(date('M d, Y', strtotime($r['created_at']))) ?></td>
-                                    <td>
-                                        <span class="status-badge status-<?= e($r['status']) ?>"><?= e($r['status']) ?></span>
-                                    </td>
-                                    <td>
-                                        <?php if (
-                                            $r['status'] === 'Pending' ||
-                                            ($r['status'] === 'Approved' && empty($r['qr_code_hash']))
-                                        ): ?>
-                                            <form method="POST" action="health_documentation.php" class="hd-approval-form">
-                                                <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
-                                                <input type="hidden" name="action" value="approve_request">
-                                                <input type="hidden" name="req_id" value="<?= (int)$r['id'] ?>">
-                                                <strong>Complete physical examination</strong>
-                                                <div class="hd-approval-grid">
-                                                    <label>Height (cm)<input type="number" name="height_cm" min="30" max="250" step="0.01"></label>
-                                                    <label>Weight (kg)<input type="number" name="weight_kg" min="1" max="500" step="0.01"></label>
-                                                    <label>Temperature (°C)<input type="number" name="temperature" min="25" max="45" step="0.1"></label>
-                                                    <label>Blood pressure<input type="text" name="blood_pressure" maxlength="20" placeholder="120/80"></label>
-                                                    <label class="hd-approval-wide">Physical examination findings<textarea name="physical_findings" rows="3" maxlength="5000" required></textarea></label>
-                                                    <label class="hd-approval-wide">Staff assessment / diagnosis<textarea name="diagnosis" rows="2" maxlength="3000"></textarea></label>
-                                                    <label class="hd-approval-wide">Recommendations<textarea name="recommendation" rows="2" maxlength="3000"></textarea></label>
-                                                </div>
-                                                <button type="submit" class="hd-button hd-button-primary">Save physical exam &amp; approve certificate</button>
-                                            </form>
-                                            <?php if ($r['status'] === 'Pending'): ?>
-                                            <form method="POST" action="health_documentation.php" class="hd-request-reject" onsubmit="return confirm('Reject this request?');">
-                                                <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
-                                                <input type="hidden" name="action" value="reject_request">
-                                                <input type="hidden" name="req_id" value="<?= (int)$r['id'] ?>">
-                                                <button type="submit" class="hd-delete">Reject request</button>
-                                            </form>
-                                            <?php endif; ?>
+        <section class="hd-content">
 
-                                        <?php elseif (in_array($r['status'], ['Approved', 'Completed'], true) && !empty($r['qr_code_hash'])): ?>
-                                            <div class="hd-certificate-issued">
-                                                <strong>Certificate approved</strong><br>
-                                                Code: <code><?= e($r['qr_code_hash']) ?></code><br>
-                                                Issued: <?= e($r['issued_date'] ? date('M d, Y', strtotime($r['issued_date'])) : 'Not recorded') ?>
-                                                <a class="hd-button hd-button-light" href="../print_medical_certificate_request.php?id=<?= (int)$r['id'] ?>">View / print certificate</a>
-                                                <a class="hd-button hd-button-light" href="scan_medical_certificate.php">Scan to verify</a>
-                                            </div>
-                                        <?php elseif ($r['status'] === 'Completed'): ?>
-                                            <div style="font-size:12px;">
-                                                <strong style="color:#166534;">Verified Certificate Issued</strong><br>
-                                                Code: <code><?= e($r['qr_code_hash']) ?></code><br>
-                                                Issued: <?= e($r['issued_date'] ? date('M d, Y', strtotime($r['issued_date'])) : 'Not recorded') ?>
-                                                <a class="hd-button hd-button-light" href="../print_medical_certificate_request.php?id=<?= (int)$r['id'] ?>">View / print certificate</a>
-                                            </div>
-                                        <?php else: ?>
-                                            <span style="color:#dc2626; font-size:12px;">Request Rejected</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="5" class="hd-empty">No student medical certificate requests found.</td>
-                            </tr>
+            <?php if ($message !== ''): ?>
+                <div class="hd-alert <?= $messageType === 'error' ? 'hd-alert-error' : 'hd-alert-success' ?>">
+                    <?= e($message) ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- SECTION 1: MEDICAL CERTIFICATE REQUESTS FROM STUDENTS -->
+            <section class="hd-panel" style="margin-bottom: 30px;">
+                <div class="hd-panel-heading">
+                    <div>
+                        <h2><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"> Student Medical Certificate Requests</h2>
+                        <p>Review student-submitted health information, complete the physical examination during the clinic visit, and approve printable QR-verified certificates.</p>
+                    </div>
+                    <form method="GET" action="health_documentation.php" class="hd-search">
+                        <input
+                            type="search"
+                            name="search"
+                            value="<?= e($searchTerm) ?>"
+                            placeholder="Search name, ID, purpose, or status"
+                            aria-label="Search medical certificate requests">
+                        <button type="submit" class="hd-button hd-button-primary">Search</button>
+                        <?php if ($searchTerm !== ''): ?>
+                            <a class="hd-button hd-button-light" href="health_documentation.php">Clear</a>
                         <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <section class="hd-panel" id="walk-in-certificate">
-            <div class="hd-panel-heading">
-                <div>
-                    <h2>Walk-in Medical Certificate</h2>
-                    <p>For students who do not use the system. Enter their personal details and interview answers, complete the physical examination, then generate the certificate with QR verification.</p>
+                    </form>
                 </div>
-            </div>
 
-            <form method="POST" action="health_documentation.php" class="hd-form">
-                <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
-                <input type="hidden" name="action" value="create_walkin_certificate">
+                <div class="hd-table-wrap">
+                    <table class="hd-table">
+                        <thead>
+                            <tr>
+                                <th>Student Details</th>
+                                <th>Purpose</th>
+                                <th>Date Requested</th>
+                                <th>Status</th>
+                                <th>Action / Management</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($medCertRequests && $medCertRequests->num_rows > 0): ?>
+                                <?php while ($r = $medCertRequests->fetch_assoc()): ?>
+                                    <tr>
+                                        <td>
+                                            <strong><?= e($r['request_student_name'] ?: 'Student') ?></strong><br>
+                                            <small><?= e($r['student_id_no']) ?> | <?= e($r['request_course_year'] ?: 'N/A') ?></small>
+                                            <details class="hd-request-details" open>
+                                                <summary>Student-submitted information (click to collapse)</summary>
+                                                <dl>
+                                                    <dt>Age / gender</dt>
+                                                    <dd><?= e($r['age'] ?: 'Not provided') ?> / <?= e($r['gender'] ?: 'Not provided') ?></dd>
+                                                    <dt>Contact</dt>
+                                                    <dd><?= e($r['contact'] ?: 'Not provided') ?></dd>
+                                                    <dt>Email</dt>
+                                                    <dd><?= e($r['email'] ?: 'Not provided') ?></dd>
+                                                    <dt>Allergies</dt>
+                                                    <dd><?= nl2br(e($r['allergies'] ?: 'Not provided')) ?></dd>
+                                                    <dt>Current medications</dt>
+                                                    <dd><?= nl2br(e($r['current_medications'] ?: 'Not provided')) ?></dd>
+                                                    <dt>Medical history</dt>
+                                                    <dd><?= nl2br(e($r['medical_history'] ?: 'Not provided')) ?></dd>
+                                                    <dt>Menstrual history</dt>
+                                                    <dd><?= e($r['menstrual_history'] ?: 'Not provided') ?></dd>
+                                                    <dt>Alcohol / tobacco</dt>
+                                                    <dd><?= e($r['alcohol_use'] ?: 'Not provided') ?> / <?= e($r['tobacco_use'] ?: 'Not provided') ?></dd>
+                                                    <dt>Family history</dt>
+                                                    <dd>TB: <?= e($r['family_history_tuberculosis'] ?: 'Not provided') ?>; high blood pressure: <?= e($r['family_history_hypertension'] ?: 'Not provided') ?>; diabetes: <?= e($r['family_history_diabetes'] ?: 'Not provided') ?>; heart disease: <?= e($r['family_history_heart_disease'] ?: 'Not provided') ?>; other: <?= nl2br(e($r['family_history_other'] ?: 'Not provided')) ?></dd>
+                                                </dl>
+                                            </details>
+                                        </td>
+                                        <td><?= e($r['purpose']) ?></td>
+                                        <td><?= e(date('M d, Y', strtotime($r['created_at']))) ?></td>
+                                        <td>
+                                            <span class="status-badge status-<?= e($r['status']) ?>"><?= e($r['status']) ?></span>
+                                        </td>
+                                        <td>
+                                            <?php if (
+                                                $r['status'] === 'Pending' ||
+                                                ($r['status'] === 'Approved' && empty($r['qr_code_hash']))
+                                            ): ?>
+                                                <form method="POST" action="health_documentation.php" class="hd-approval-form">
+                                                    <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                                                    <input type="hidden" name="action" value="approve_request">
+                                                    <input type="hidden" name="req_id" value="<?= (int)$r['id'] ?>">
+                                                    <strong>Complete physical examination</strong>
+                                                    <div class="hd-approval-grid">
+                                                        <label>Height (cm)<input type="number" name="height_cm" min="30" max="250" step="0.01"></label>
+                                                        <label>Weight (kg)<input type="number" name="weight_kg" min="1" max="500" step="0.01"></label>
+                                                        <label>Temperature (°C)<input type="number" name="temperature" min="25" max="45" step="0.1"></label>
+                                                        <label>Blood pressure<input type="text" name="blood_pressure" maxlength="20" placeholder="120/80"></label>
+                                                        <label class="hd-approval-wide">Physical examination findings<textarea name="physical_findings" rows="3" maxlength="5000" required></textarea></label>
+                                                        <label class="hd-approval-wide">Staff assessment / diagnosis<textarea name="diagnosis" rows="2" maxlength="3000"></textarea></label>
+                                                        <label class="hd-approval-wide">Recommendations<textarea name="recommendation" rows="2" maxlength="3000"></textarea></label>
+                                                    </div>
+                                                    <button type="submit" class="hd-button hd-button-primary">Save physical exam &amp; approve certificate</button>
+                                                </form>
+                                                <?php if ($r['status'] === 'Pending'): ?>
+                                                    <form method="POST" action="health_documentation.php" class="hd-request-reject" onsubmit="return confirm('Reject this request?');">
+                                                        <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                                                        <input type="hidden" name="action" value="reject_request">
+                                                        <input type="hidden" name="req_id" value="<?= (int)$r['id'] ?>">
+                                                        <button type="submit" class="hd-delete">Reject request</button>
+                                                    </form>
+                                                <?php endif; ?>
 
-                <div class="hd-form-grid">
-                    <div class="hd-field hd-field-wide"><strong>Student personal information</strong></div>
-                    <div class="hd-field">
-                        <label for="walkin_student_name">Full name <span>*</span></label>
-                        <input type="text" name="student_name" id="walkin_student_name" maxlength="100" required>
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_student_id_no">Student ID <span>*</span></label>
-                        <input type="text" name="student_id_no" id="walkin_student_id_no" maxlength="50" required>
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_course_year">Course / year</label>
-                        <input type="text" name="course_year" id="walkin_course_year" maxlength="50">
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_age">Age</label>
-                        <input type="number" name="age" id="walkin_age" min="1" max="120">
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_gender">Gender</label>
-                        <select name="gender" id="walkin_gender">
-                            <option value="">Not provided</option>
-                            <option value="Female">Female</option>
-                            <option value="Male">Male</option>
-                            <option value="Non-binary">Non-binary</option>
-                            <option value="Other">Other</option>
-                            <option value="Prefer not to say">Prefer not to say</option>
-                        </select>
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_contact">Contact number</label>
-                        <input type="text" name="contact" id="walkin_contact" maxlength="50">
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_email">Email address</label>
-                        <input type="email" name="email" id="walkin_email" maxlength="100">
-                    </div>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_purpose">Purpose of certificate <span>*</span></label>
-                        <input type="text" name="purpose" id="walkin_purpose" maxlength="255" required>
-                    </div>
+                                            <?php elseif (in_array($r['status'], ['Approved', 'Completed'], true) && !empty($r['qr_code_hash'])): ?>
+                                                <div class="hd-certificate-issued">
+                                                    <strong>Certificate approved</strong><br>
+                                                    Code: <code><?= e($r['qr_code_hash']) ?></code><br>
+                                                    Issued: <?= e($r['issued_date'] ? date('M d, Y', strtotime($r['issued_date'])) : 'Not recorded') ?>
+                                                    <a class="hd-button hd-button-light" href="../print_medical_certificate_request.php?id=<?= (int)$r['id'] ?>">View / print certificate</a>
+                                                    <a class="hd-button hd-button-light" href="scan_medical_certificate.php">Scan to verify</a>
+                                                </div>
+                                            <?php elseif ($r['status'] === 'Completed'): ?>
+                                                <div style="font-size:12px;">
+                                                    <strong style="color:#166534;">Verified Certificate Issued</strong><br>
+                                                    Code: <code><?= e($r['qr_code_hash']) ?></code><br>
+                                                    Issued: <?= e($r['issued_date'] ? date('M d, Y', strtotime($r['issued_date'])) : 'Not recorded') ?>
+                                                    <a class="hd-button hd-button-light" href="../print_medical_certificate_request.php?id=<?= (int)$r['id'] ?>">View / print certificate</a>
+                                                </div>
+                                            <?php else: ?>
+                                                <span style="color:#dc2626; font-size:12px;">Request Rejected</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="5" class="hd-empty">No student medical certificate requests found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-                    <div class="hd-field hd-field-wide"><strong>Student interview</strong></div>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_allergies">Allergies</label>
-                        <textarea name="allergies" id="walkin_allergies" rows="3" maxlength="2000"></textarea>
+            <section class="hd-panel" id="walk-in-certificate">
+                <div class="hd-panel-heading">
+                    <div>
+                        <h2>Walk-in Medical Certificate</h2>
+                        <p>For students who do not use the system. Enter their personal details and interview answers, complete the physical examination, then generate the certificate with QR verification.</p>
                     </div>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_current_medications">Current medications</label>
-                        <textarea name="current_medications" id="walkin_current_medications" rows="3" maxlength="2000"></textarea>
-                    </div>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_medical_history">Past or current medical history</label>
-                        <textarea name="medical_history" id="walkin_medical_history" rows="3" maxlength="3000"></textarea>
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_menstrual_history">Menstrual history</label>
-                        <select name="menstrual_history" id="walkin_menstrual_history">
-                            <option value="Not asked">Not asked</option>
-                            <option value="Not applicable">Not applicable</option>
-                            <option value="Regular">Regular</option>
-                            <option value="Irregular">Irregular</option>
-                            <option value="Prefer not to answer">Prefer not to answer</option>
-                        </select>
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_alcohol_use">Alcohol use</label>
-                        <select name="alcohol_use" id="walkin_alcohol_use">
-                            <option value="Not asked">Not asked</option>
-                            <option value="No">No</option>
-                            <option value="Yes">Yes</option>
-                            <option value="Prefer not to answer">Prefer not to answer</option>
-                        </select>
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_tobacco_use">Tobacco use</label>
-                        <select name="tobacco_use" id="walkin_tobacco_use">
-                            <option value="Not asked">Not asked</option>
-                            <option value="No">No</option>
-                            <option value="Yes">Yes</option>
-                            <option value="Prefer not to answer">Prefer not to answer</option>
-                        </select>
-                    </div>
-                    <?php
-                    $walkInFamilyHistoryFields = [
-                        'family_history_tuberculosis' => 'Family history of tuberculosis',
-                        'family_history_hypertension' => 'Family history of high blood pressure',
-                        'family_history_diabetes' => 'Family history of diabetes',
-                        'family_history_heart_disease' => 'Family history of heart disease'
-                    ];
-                    foreach ($walkInFamilyHistoryFields as $fieldName => $fieldLabel):
-                    ?>
+                </div>
+
+                <form method="POST" action="health_documentation.php" class="hd-form">
+                    <input type="hidden" name="csrf_token" value="<?= e($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="create_walkin_certificate">
+
+                    <div class="hd-form-grid">
+                        <div class="hd-field hd-field-wide"><strong>Student personal information</strong></div>
                         <div class="hd-field">
-                            <label for="walkin_<?= e($fieldName) ?>"><?= e($fieldLabel) ?></label>
-                            <select name="<?= e($fieldName) ?>" id="walkin_<?= e($fieldName) ?>">
-                                <option value="Unknown">Unknown</option>
+                            <label for="walkin_student_name">Full name <span>*</span></label>
+                            <input type="text" name="student_name" id="walkin_student_name" maxlength="100" required>
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_student_id_no">Student ID <span>*</span></label>
+                            <input type="text" name="student_id_no" id="walkin_student_id_no" maxlength="50" required>
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_course_year">Course / year</label>
+                            <input type="text" name="course_year" id="walkin_course_year" maxlength="50">
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_age">Age</label>
+                            <input type="number" name="age" id="walkin_age" min="1" max="120">
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_gender">Gender</label>
+                            <select name="gender" id="walkin_gender">
+                                <option value="">Not provided</option>
+                                <option value="Female">Female</option>
+                                <option value="Male">Male</option>
+                                <option value="Non-binary">Non-binary</option>
+                                <option value="Other">Other</option>
+                                <option value="Prefer not to say">Prefer not to say</option>
+                            </select>
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_contact">Contact number</label>
+                            <input type="text" name="contact" id="walkin_contact" maxlength="50">
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_email">Email address</label>
+                            <input type="email" name="email" id="walkin_email" maxlength="100">
+                        </div>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_purpose">Purpose of certificate <span>*</span></label>
+                            <input type="text" name="purpose" id="walkin_purpose" maxlength="255" required>
+                        </div>
+
+                        <div class="hd-field hd-field-wide"><strong>Student interview</strong></div>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_allergies">Allergies</label>
+                            <textarea name="allergies" id="walkin_allergies" rows="3" maxlength="2000"></textarea>
+                        </div>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_current_medications">Current medications</label>
+                            <textarea name="current_medications" id="walkin_current_medications" rows="3" maxlength="2000"></textarea>
+                        </div>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_medical_history">Past or current medical history</label>
+                            <textarea name="medical_history" id="walkin_medical_history" rows="3" maxlength="3000"></textarea>
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_menstrual_history">Menstrual history</label>
+                            <select name="menstrual_history" id="walkin_menstrual_history">
+                                <option value="Not asked">Not asked</option>
+                                <option value="Not applicable">Not applicable</option>
+                                <option value="Regular">Regular</option>
+                                <option value="Irregular">Irregular</option>
+                                <option value="Prefer not to answer">Prefer not to answer</option>
+                            </select>
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_alcohol_use">Alcohol use</label>
+                            <select name="alcohol_use" id="walkin_alcohol_use">
+                                <option value="Not asked">Not asked</option>
                                 <option value="No">No</option>
                                 <option value="Yes">Yes</option>
                                 <option value="Prefer not to answer">Prefer not to answer</option>
                             </select>
                         </div>
-                    <?php endforeach; ?>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_family_history_other">Other family health history</label>
-                        <textarea name="family_history_other" id="walkin_family_history_other" rows="3" maxlength="2000"></textarea>
+                        <div class="hd-field">
+                            <label for="walkin_tobacco_use">Tobacco use</label>
+                            <select name="tobacco_use" id="walkin_tobacco_use">
+                                <option value="Not asked">Not asked</option>
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                                <option value="Prefer not to answer">Prefer not to answer</option>
+                            </select>
+                        </div>
+                        <?php
+                        $walkInFamilyHistoryFields = [
+                            'family_history_tuberculosis' => 'Family history of tuberculosis',
+                            'family_history_hypertension' => 'Family history of high blood pressure',
+                            'family_history_diabetes' => 'Family history of diabetes',
+                            'family_history_heart_disease' => 'Family history of heart disease'
+                        ];
+                        foreach ($walkInFamilyHistoryFields as $fieldName => $fieldLabel):
+                        ?>
+                            <div class="hd-field">
+                                <label for="walkin_<?= e($fieldName) ?>"><?= e($fieldLabel) ?></label>
+                                <select name="<?= e($fieldName) ?>" id="walkin_<?= e($fieldName) ?>">
+                                    <option value="Unknown">Unknown</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="Prefer not to answer">Prefer not to answer</option>
+                                </select>
+                            </div>
+                        <?php endforeach; ?>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_family_history_other">Other family health history</label>
+                            <textarea name="family_history_other" id="walkin_family_history_other" rows="3" maxlength="2000"></textarea>
+                        </div>
+
+                        <div class="hd-field hd-field-wide"><strong>Physical examination and certificate</strong></div>
+                        <div class="hd-field">
+                            <label for="walkin_height_cm">Height (cm)</label>
+                            <input type="number" name="height_cm" id="walkin_height_cm" min="30" max="250" step="0.01">
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_weight_kg">Weight (kg)</label>
+                            <input type="number" name="weight_kg" id="walkin_weight_kg" min="1" max="500" step="0.01">
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_temperature">Temperature (°C)</label>
+                            <input type="number" name="temperature" id="walkin_temperature" min="25" max="45" step="0.1">
+                        </div>
+                        <div class="hd-field">
+                            <label for="walkin_blood_pressure">Blood pressure</label>
+                            <input type="text" name="blood_pressure" id="walkin_blood_pressure" maxlength="20" placeholder="120/80">
+                        </div>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_physical_findings">Physical examination findings <span>*</span></label>
+                            <textarea name="physical_findings" id="walkin_physical_findings" rows="4" maxlength="5000" required></textarea>
+                        </div>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_diagnosis">Staff assessment / diagnosis</label>
+                            <textarea name="diagnosis" id="walkin_diagnosis" rows="3" maxlength="3000"></textarea>
+                        </div>
+                        <div class="hd-field hd-field-wide">
+                            <label for="walkin_recommendation">Recommendations / remarks</label>
+                            <textarea name="recommendation" id="walkin_recommendation" rows="3" maxlength="3000"></textarea>
+                        </div>
                     </div>
 
-                    <div class="hd-field hd-field-wide"><strong>Physical examination and certificate</strong></div>
-                    <div class="hd-field">
-                        <label for="walkin_height_cm">Height (cm)</label>
-                        <input type="number" name="height_cm" id="walkin_height_cm" min="30" max="250" step="0.01">
+                    <label class="hd-walkin-confirmation">
+                        <input type="checkbox" name="confirmed_with_student" value="yes" required>
+                        <span>I confirmed the personal and interview information with the walk-in student.</span>
+                    </label>
+                    <p class="hd-privacy-note">Interview answers are available to authorized clinic staff and are not printed on the certificate. The certificate is generated immediately after saving.</p>
+                    <div class="hd-form-actions">
+                        <button type="submit" class="hd-button hd-button-primary">Save &amp; generate walk-in certificate</button>
+                        <button type="reset" class="hd-button hd-button-light">Clear form</button>
                     </div>
-                    <div class="hd-field">
-                        <label for="walkin_weight_kg">Weight (kg)</label>
-                        <input type="number" name="weight_kg" id="walkin_weight_kg" min="1" max="500" step="0.01">
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_temperature">Temperature (°C)</label>
-                        <input type="number" name="temperature" id="walkin_temperature" min="25" max="45" step="0.1">
-                    </div>
-                    <div class="hd-field">
-                        <label for="walkin_blood_pressure">Blood pressure</label>
-                        <input type="text" name="blood_pressure" id="walkin_blood_pressure" maxlength="20" placeholder="120/80">
-                    </div>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_physical_findings">Physical examination findings <span>*</span></label>
-                        <textarea name="physical_findings" id="walkin_physical_findings" rows="4" maxlength="5000" required></textarea>
-                    </div>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_diagnosis">Staff assessment / diagnosis</label>
-                        <textarea name="diagnosis" id="walkin_diagnosis" rows="3" maxlength="3000"></textarea>
-                    </div>
-                    <div class="hd-field hd-field-wide">
-                        <label for="walkin_recommendation">Recommendations / remarks</label>
-                        <textarea name="recommendation" id="walkin_recommendation" rows="3" maxlength="3000"></textarea>
-                    </div>
-                </div>
+                </form>
+            </section>
 
-                <label class="hd-walkin-confirmation">
-                    <input type="checkbox" name="confirmed_with_student" value="yes" required>
-                    <span>I confirmed the personal and interview information with the walk-in student.</span>
-                </label>
-                <p class="hd-privacy-note">Interview answers are available to authorized clinic staff and are not printed on the certificate. The certificate is generated immediately after saving.</p>
-                <div class="hd-form-actions">
-                    <button type="submit" class="hd-button hd-button-primary">Save &amp; generate walk-in certificate</button>
-                    <button type="reset" class="hd-button hd-button-light">Clear form</button>
-                </div>
-            </form>
         </section>
 
-    </section>
-
-</main>
+    </main>
 
 </body>
+
 </html>
 <?php $conn->close(); ?>

@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 if (!empty($_SESSION['must_change_password'])) {
@@ -26,6 +25,7 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,12 +60,18 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
                 <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Clinic Consultation
             </a>
 
+            <a href="clinic_operations.php" class="active"><span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Passes, Referrals &amp; Incidents</a>
+            
             <a href="health_documentation.php">
                 <span><img class="ui-icon" src="../../image/icon-document.svg" alt="" aria-hidden="true"></span> Health Documentation
             </a>
 
             <a href="scan_medical_certificate.php">
                 <span><img class="ui-icon" src="../../image/icon-certificate.svg" alt="" aria-hidden="true"></span> Verify Certificate
+            </a>
+
+            <a href="medicine_inventory.php">
+                <span><img class="ui-icon" src="../../image/icon-medical.svg" alt="" aria-hidden="true"></span> Medicine Inventory
             </a>
 
             <p class="sidebar-label">REPORTS</p>
@@ -113,9 +119,9 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
             <div>
                 <span class="welcome-tag">SHRCMS STAFF PORTAL</span>
 
-               <h2>Welcome back, <?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>!</h2>
+                <h2>Welcome back, <?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>!</h2>
                 <p>
-                   Manage clinic consultations, certificate requests, and health reports.
+                    Manage clinic consultations, certificate requests, and health reports.
                 </p>
 
                 <a href="clinic_consultation.php" class="welcome-button">
@@ -164,4 +170,5 @@ $username = $_SESSION['admin_username'] ?? 'Clinic Staff';
     </main>
 
 </body>
+
 </html>

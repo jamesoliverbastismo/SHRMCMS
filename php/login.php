@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
 
     if ($school_id === '' || $password === '') {
-        $error_msg = 'Please enter your School ID or Staff ID and password.';
+        $error_msg = 'Please enter your School ID, Staff ID, Teacher ID, or Admin ID and password.';
     } elseif (!isset($conn) || !$conn) {
         $error_msg = 'Database connection failed.';
     } else {
@@ -148,7 +148,122 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // ==========================================
-        // 2. CHECK STAFF ACCOUNT USING STAFF ID
+        // 2A. CHECK TEACHER ACCOUNT USING TEACHER ID
+        // ==========================================
+        if (!$account_found && $error_msg === '') {
+            $teachers_table = $conn->query("SHOW TABLES LIKE 'teachers'");
+
+            if (!$teachers_table) {
+                error_log('Teachers table check failed: ' . $conn->error);
+                $error_msg = 'Unable to process your login. Please try again.';
+            } elseif ($teachers_table->num_rows > 0) {
+                $stmt_teacher = $conn->prepare(
+                    "SELECT id, teacher_id_no, fullname, password, status
+                     FROM teachers
+                     WHERE teacher_id_no = ?
+                     LIMIT 2"
+                );
+
+                if (!$stmt_teacher) {
+                    error_log('Teacher ID login query failed: ' . $conn->error);
+                    $error_msg = 'Unable to process your login. Please try again.';
+                } else {
+                    $stmt_teacher->bind_param('s', $school_id);
+                    if (!$stmt_teacher->execute()) {
+                        error_log('Teacher ID login execution failed: ' . $stmt_teacher->error);
+                        $error_msg = 'Unable to process your login. Please try again.';
+                    } else {
+                        $result_teacher = $stmt_teacher->get_result();
+
+                        if (!$result_teacher) {
+                            error_log('Teacher ID login result failed: ' . $stmt_teacher->error);
+                            $error_msg = 'Unable to process your login. Please try again.';
+                        } elseif ($result_teacher->num_rows > 1) {
+                            $account_found = true;
+                            $error_msg = 'This Teacher ID matches multiple accounts. Contact an administrator.';
+                        } elseif ($result_teacher->num_rows === 1) {
+                            $account_found = true;
+                            $teacher_user = $result_teacher->fetch_assoc();
+                            $stored_password = (string) ($teacher_user['password'] ?? '');
+                            $password_valid = password_verify($password, $stored_password);
+
+                            if (
+                                !$password_valid &&
+                                $stored_password !== '' &&
+                                hash_equals($stored_password, $password)
+                            ) {
+                                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                                $rehash_stmt = $conn->prepare(
+                                    'UPDATE teachers SET password = ? WHERE id = ?'
+                                );
+
+                                if (!$rehash_stmt) {
+                                    error_log('Teacher password rehash prepare failed: ' . $conn->error);
+                                    $error_msg = 'Unable to process your login. Please try again.';
+                                } else {
+                                    $teacher_record_id = (int) $teacher_user['id'];
+                                    $rehash_stmt->bind_param('si', $hashed_password, $teacher_record_id);
+
+                                    if ($rehash_stmt->execute()) {
+                                        $password_valid = true;
+                                    } else {
+                                        error_log('Teacher password rehash failed: ' . $rehash_stmt->error);
+                                        $error_msg = 'Unable to process your login. Please try again.';
+                                    }
+
+                                    $rehash_stmt->close();
+                                }
+                            }
+
+                            if (strtolower((string)($teacher_user['status'] ?? 'Active')) !== 'active') {
+                                $error_msg = 'Invalid ID or password.';
+                            } elseif ($password_valid) {
+                                $teacherId = (int) $teacher_user['id'];
+                                $mustChangePassword = needsInitialPasswordChange(
+                                    $conn,
+                                    'teacher',
+                                    $teacherId
+                                );
+
+                                if ($mustChangePassword === null) {
+                                    $error_msg = 'Unable to process your login. Please try again.';
+                                } else {
+                                    session_regenerate_id(true);
+
+                                    $_SESSION['admin_logged_in'] = true;
+                                    $_SESSION['admin_username'] = $teacher_user['fullname'] ?? 'Teacher';
+                                    $_SESSION['user_role'] = 'Teacher';
+                                    $_SESSION['user_id'] = $teacherId;
+                                    $_SESSION['staff_id'] = $teacherId;
+                                    $_SESSION['auth_account_type'] = 'teacher';
+                                    $_SESSION['auth_account_id'] = $teacherId;
+                                    $_SESSION['must_change_password'] = $mustChangePassword;
+
+                                    if ($mustChangePassword) {
+                                        header('Location: change_initial_password.php');
+                                        exit;
+                                    }
+
+                                    header('Location: Teacher_Dashboard/teacher_dashboard.php');
+                                    exit;
+                                }
+                            } elseif ($error_msg === '') {
+                                $error_msg = 'Invalid ID or password.';
+                            }
+                        }
+                    }
+
+                    $stmt_teacher->close();
+                }
+            }
+
+            if ($teachers_table) {
+                $teachers_table->free();
+            }
+        }
+
+        // ==========================================
+        // 2B. CHECK STAFF ACCOUNT USING STAFF ID
         // ==========================================
         if (!$account_found && $error_msg === '') {
             $staff_columns = $conn->query(
@@ -254,8 +369,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     header(
                                         'Location: ' . (
                                             $isTeacher
-                                                ? 'Teacher_Dashboard/teacher_dashboard.php'
-                                                : 'Staff_Dashboard/staff_dashboard.php'
+                                            ? 'Teacher_Dashboard/teacher_dashboard.php'
+                                            : 'Staff_Dashboard/staff_dashboard.php'
                                         )
                                     );
                                     exit;
@@ -279,7 +394,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // ==========================================
-        // 3. CHECK STUDENT ACCOUNT USING SCHOOL ID
+        // 3. CHECK USER / STUDENT ACCOUNT USING SCHOOL ID
         // ==========================================
         if (!$account_found && $error_msg === '') {
             $users_table = $conn->query("SHOW TABLES LIKE 'users'");
@@ -316,13 +431,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $account_found = true;
                             $user = $result_user->fetch_assoc();
                             $stored_password = (string) $user['password'];
+                            $password_valid = password_verify($password, $stored_password);
+
+                            if (
+                                !$password_valid &&
+                                $stored_password !== '' &&
+                                hash_equals($stored_password, $password)
+                            ) {
+                                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                                $rehash_stmt = $conn->prepare('UPDATE users SET password = ? WHERE id = ?');
+                                if ($rehash_stmt) {
+                                    $uid = (int)$user['id'];
+                                    $rehash_stmt->bind_param('si', $hashed_password, $uid);
+                                    if ($rehash_stmt->execute()) {
+                                        $password_valid = true;
+                                    }
+                                    $rehash_stmt->close();
+                                }
+                            }
 
                             if (strtolower((string)($user['status'] ?? 'Active')) !== 'active') {
                                 $error_msg = 'Invalid ID or password.';
-                            } elseif (
-                                password_verify($password, $stored_password) ||
-                                hash_equals($stored_password, $password)
-                            ) {
+                            } elseif ($password_valid) {
                                 $role = strtolower(trim($user['role'] ?? ''));
 
                                 if ($role === '') {
@@ -361,6 +491,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     if ($role === 'staff') {
                                         header('Location: Staff_Dashboard/staff_dashboard.php');
                                         exit;
+                                    } elseif ($role === 'teacher') {
+                                        header('Location: Teacher_Dashboard/teacher_dashboard.php');
+                                        exit;
                                     } elseif ($role === 'administrator' || $role === 'admin') {
                                         header('Location: Admin_Dashboard/admin_dashboard.php');
                                         exit;
@@ -384,6 +517,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // ==========================================
+        // 4. CHECK STUDENT RECORD USING SCHOOL ID
+        // ==========================================
         if (!$account_found && $error_msg === '') {
             $students_table = $conn->query("SHOW TABLES LIKE 'students'");
 
@@ -457,17 +593,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             if ($password_valid) {
-                                session_regenerate_id(true);
+                                $studentRecordId = (int) $student['id'];
+                                $studentLookupId = (int) ($student['user_id'] ?? 0);
+                                $passwordCheckId = $studentLookupId > 0 ? $studentLookupId : $studentRecordId;
+                                $mustChangePassword = needsInitialPasswordChange(
+                                    $conn,
+                                    'student',
+                                    $passwordCheckId
+                                );
 
-                                $_SESSION['admin_logged_in'] = true;
-                                $_SESSION['admin_username'] = $student['fullname'] ?? 'Student';
-                                $_SESSION['user_role'] = 'Student';
-                                $_SESSION['user_id'] = (int) ($student['user_id'] ?? 0);
-                                $_SESSION['student_id_no'] = $student['student_id_no'];
-                                $_SESSION['email'] = $student['email'] ?? '';
+                                if ($mustChangePassword === null) {
+                                    $error_msg = 'Unable to process your login. Please try again.';
+                                } else {
+                                    session_regenerate_id(true);
 
-                                header('Location: Student_Dashboard/student_dashboard.php');
-                                exit;
+                                    $_SESSION['admin_logged_in'] = true;
+                                    $_SESSION['admin_username'] = $student['fullname'] ?? 'Student';
+                                    $_SESSION['user_role'] = 'Student';
+                                    $_SESSION['user_id'] = $studentLookupId;
+                                    $_SESSION['student_id_no'] = $student['student_id_no'];
+                                    $_SESSION['email'] = $student['email'] ?? '';
+                                    $_SESSION['auth_account_type'] = 'student';
+                                    $_SESSION['auth_account_id'] = $passwordCheckId;
+                                    $_SESSION['must_change_password'] = $mustChangePassword;
+
+                                    if ($mustChangePassword) {
+                                        header('Location: change_initial_password.php');
+                                        exit;
+                                    }
+
+                                    header('Location: Student_Dashboard/student_dashboard.php');
+                                    exit;
+                                }
                             } elseif ($error_msg === '') {
                                 $error_msg = 'Invalid ID or password.';
                             }
@@ -490,6 +647,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -507,8 +665,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($error_msg !== ''): ?>
                 <div
                     class="login-error"
-                    role="alert"
-                >
+                    role="alert">
                     <?= htmlspecialchars(
                         $error_msg,
                         ENT_QUOTES,
@@ -524,22 +681,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         class="input-icon"
                         src="../image/login-id-icon.svg"
                         alt=""
-                        aria-hidden="true"
-                    >
+                        aria-hidden="true">
                     <input
                         type="text"
                         name="school_id"
                         required
                         maxlength="50"
                         autocomplete="username"
-                        aria-label="School ID, Staff ID, or Admin ID"
+                        aria-label="School ID, Staff ID, Teacher ID, or Admin ID"
                         placeholder="e.g. STAFF-0001 or ADMIN-0001"
                         value="<?= htmlspecialchars(
-                            $_POST['school_id'] ?? '',
-                            ENT_QUOTES,
-                            'UTF-8'
-                        ) ?>"
-                    >
+                                    $_POST['school_id'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>">
                 </div>
 
                 <div class="login-input-group">
@@ -547,8 +702,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         class="input-icon"
                         src="../image/login-lock-icon.svg"
                         alt=""
-                        aria-hidden="true"
-                    >
+                        aria-hidden="true">
                     <input
                         type="password"
                         name="password"
@@ -556,8 +710,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         required
                         autocomplete="current-password"
                         aria-label="Password"
-                        placeholder="Enter Password"
-                    >
+                        placeholder="Enter Password">
 
                     <button
                         type="button"
@@ -566,13 +719,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         aria-label="Show password"
                         aria-pressed="false"
                         data-show-icon="../image/login-eye-icon.svg"
-                        data-hide-icon="../image/login-eye-off-icon.svg"
-                    >
+                        data-hide-icon="../image/login-eye-off-icon.svg">
                         <img
                             src="../image/login-eye-icon.svg"
                             alt=""
-                            aria-hidden="true"
-                        >
+                            aria-hidden="true">
                     </button>
                 </div>
 
@@ -581,8 +732,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input
                             type="checkbox"
                             name="remember_me"
-                            value="1"
-                        >
+                            value="1">
                         Remember me
                     </label>
 
@@ -593,8 +743,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <button
                     type="submit"
-                    class="login-submit-btn"
-                >
+                    class="login-submit-btn">
                     Login
                 </button>
 
@@ -606,4 +755,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="../js/login.js?v=20261114-login"></script>
 
 </body>
+
 </html>

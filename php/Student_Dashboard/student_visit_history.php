@@ -1,68 +1,43 @@
 <?php
 session_start();
-if (!empty($_SESSION['must_change_password'])) {
-    header('Location: ../change_initial_password.php');
-    exit();
-}
-
-if (
-    !isset($_SESSION['admin_logged_in']) ||
-    $_SESSION['admin_logged_in'] !== true ||
-    ($_SESSION['user_role'] ?? '') !== 'Student'
-) {
-    header('Location: ../login.php');
-    exit();
-}
+require_once __DIR__ . '/student_helper.php';
+requireStudentSession();
 
 require_once __DIR__ . '/../db.php';
 $conn->set_charset('utf8mb4');
 
-function e($value): string
-{
-    return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
-}
-
 $username = $_SESSION['admin_username'] ?? 'Student';
 $userId = (int)($_SESSION['user_id'] ?? 0);
 $studentIdNo = trim((string)($_SESSION['student_id_no'] ?? ''));
+$sessionEmail = trim((string)($_SESSION['email'] ?? ''));
 $search = trim((string)($_GET['search'] ?? ''));
 
-$student = null;
+$student = findLinkedStudent(
+    $conn,
+    $userId,
+    $studentIdNo,
+    $sessionEmail,
+    'id, student_id_no, fullname'
+);
 $visits = [];
 
-// Pangitaa ang student profile
-if ($userId > 0) {
-    $stmt = $conn->prepare('SELECT id, student_id_no, fullname FROM students WHERE user_id = ? LIMIT 1');
-    $stmt->bind_param('i', $userId);
-    $stmt->execute();
-    $student = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-}
-
-if (!$student && $studentIdNo !== '') {
-    $stmt = $conn->prepare('SELECT id, student_id_no, fullname FROM students WHERE student_id_no = ? LIMIT 1');
-    $stmt->bind_param('s', $studentIdNo);
-    $stmt->execute();
-    $student = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-}
-
 if ($student) {
-    $studentDatabaseId = (int)$student['id'];
+    $studentDatabaseIdStr = (string)(int)$student['id'];
+    $studentIdNo = (string)$student['student_id_no'];
     $username = $student['fullname'];
 
-    $sql = 'SELECT consultation_date, reason, remarks, staff_name 
-            FROM consultations 
-            WHERE student_id = ?';
+    $sql = 'SELECT consultation_date, reason, remarks, staff_name
+            FROM consultations
+            WHERE (student_id = ? OR student_id = ?)';
 
     if ($search !== '') {
         $sql .= ' AND (reason LIKE ? OR remarks LIKE ? OR staff_name LIKE ?)';
         $term = '%' . $search . '%';
-        $stmt = $conn->prepare($sql . ' ORDER BY consultation_date DESC');
-        $stmt->bind_param('isss', $studentDatabaseId, $term, $term, $term);
+        $stmt = $conn->prepare($sql . ' ORDER BY consultation_date DESC, id DESC');
+        $stmt->bind_param('sssss', $studentDatabaseIdStr, $studentIdNo, $term, $term, $term);
     } else {
-        $stmt = $conn->prepare($sql . ' ORDER BY consultation_date DESC');
-        $stmt->bind_param('i', $studentDatabaseId);
+        $stmt = $conn->prepare($sql . ' ORDER BY consultation_date DESC, id DESC');
+        $stmt->bind_param('ss', $studentDatabaseIdStr, $studentIdNo);
     }
 
     $stmt->execute();
